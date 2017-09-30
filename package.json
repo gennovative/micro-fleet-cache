@@ -1,7 +1,7 @@
 {
-  "name": "back-cache-provider",
+  "name": "back-lib-cache-provider",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Contains utility to manage cache.",
   "main": "./dist/app/server.js",
   "repository": "git@bitbucket.org:firstinteractive/back-lib-cache-provider.git",

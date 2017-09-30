@@ -1,153 +1,154 @@
 /// <reference path="./global.d.ts" />
 
-declare module 'back-lib-common-web/dist/app/RestControllerBase' {
-	/// <reference types="express" />
-	import * as express from 'express';
-	import TrailsApp = require('trails');
-	import TrailsController = require('trails-controller');
-	export abstract class RestControllerBase extends TrailsController {
-	    constructor(trailsApp: TrailsApp);
-	    /*** SUCCESS ***/
+declare module 'back-cache-provider/dist/app/CacheProvider' {
+	export type Primitive = string | number | boolean;
+	export type PrimitiveFlatJson = {
+	    [x: string]: Primitive;
+	};
+	export enum CacheLevel {
 	    /**
-	     * Responds as Accepted with status code 202 and optional data.
-	     * @param res Express response object.
-	     * @param data Data to optionally return to client.
+	     * Only caches in local memory.
 	     */
-	    protected accepted(res: express.Response, data?: any): void;
+	    LOCAL = 1,
 	    /**
-	     * Responds as Created with status code 201 and optional data.
-	     * @param res Express response object.
-	     * @param data Data to optionally return to client.
+	     * Only caches in remote service.
 	     */
-	    protected created(res: express.Response, data?: any): void;
+	    REMOTE = 2,
 	    /**
-	     * Responds as OK with status code 200 and optional data.
-	     * @param res Express response object.
-	     * @param data Data to optionally return to client.
+	     * Cache in remote service and keeps sync with local memory.
 	     */
-	    protected ok(res: express.Response, data?: any): void;
-	    /*** CLIENT ERRORS ***/
-	    /**
-	     * Responds with error status code (default 400) and writes error to server log,
-	     * then returned it to client.
-	     * @param res Express response object.
-	     * @param returnErr Error to dump to server log, and returned to client.
-	     * @param statusCode HTTP status code. Must be 4xx. Default is 400.
-	     * @param shouldLogErr Whether to write error to server log (eg: Illegal attempt to read/write resource...). Default to false.
-	     */
-	    protected clientError(res: express.Response, returnErr: any, statusCode?: number, shouldLogErr?: boolean): void;
-	    /**
-	     * Responds as Forbidden with status code 403 and optional error message.
-	     * @param res Express response object.
-	     * @param returnErr Data to optionally return to client.
-	     */
-	    protected forbidden(res: express.Response, returnErr?: any): void;
-	    /**
-	     * Responds as Not Found with status code 404 and optional error message.
-	     * @param res Express response object.
-	     * @param returnErr Data to optionally return to client.
-	     */
-	    protected notFound(res: express.Response, returnErr?: any): void;
-	    /**
-	     * Responds as Unauthorized with status code 401 and optional error message.
-	     * @param res Express response object.
-	     * @param returnErr Data to optionally return to client.
-	     */
-	    protected unauthorized(res: express.Response, returnErr?: any): void;
-	    /**
-	     * Responds error Precondition Failed with status code 412 and
-	     * then returned error to client.
-	     * @param res Express response object.
-	     * @param returnErr Error to returned to client.
-	     */
-	    protected validationError(res: express.Response, returnErr: any): void;
-	    /*** SERVER ERRORS ***/
-	    /**
-	     * Responds as Internal Error with status code 500 and
-	     * writes error to server log. The error is not returned to client.
-	     * @param res Express response object.
-	     * @param logErr Error to dump to server log, but not returned to client.
-	     */
-	    protected internalError(res: express.Response, logErr: any): void;
-	    /**
-	     * Sends response to client.
-	     * @param res Express response object.
-	     * @param data Data to return to client.
-	     * @param statusCode HTTP status code. Default is 200.
-	     */
-	    protected send(res: express.Response, data: any, statusCode: number): express.Response;
+	    BOTH = 3,
 	}
-
-}
-declare module 'back-lib-common-web/dist/app/RestCRUDControllerBase' {
-	/// <reference types="express" />
-	import * as express from 'express';
-	import TrailsApp = require('trails');
-	import { ISoftDelRepository, ModelAutoMapper, JoiModelValidator } from 'back-lib-common-contracts';
-	import { RestControllerBase } from 'back-lib-common-web/dist/app/RestControllerBase';
-	export abstract class RestCRUDControllerBase<TModel extends IModelDTO> extends RestControllerBase {
-	    protected _ClassDTO: {
-	        new (): TModel;
+	export type CacheProviderConstructorOpts = {
+	    /**
+	     * Credentials to connect to a single cache service.
+	     */
+	    single?: {
+	        /**
+	         * Address of remote cache service.
+	         */
+	        host?: string;
+	        /**
+	         * Port of remote cache service.
+	         */
+	        port?: number;
+	        /**
+	         * Password to login remote cache service.
+	         */
+	        password?: string;
 	    };
-	    protected _repo: ISoftDelRepository<TModel, any, any>;
 	    /**
-	     * Generates Trails route configs to put in file app/config/routes.js
-	     * @param {string} controllerDepIdentifier Key to look up and resolve from dependency container.
-	     * @param {boolean} isSoftDel Whether to add endpoints for `deleteSoft` and `recover`.
-	     * @param {string} pathPrefix Path prefix with heading slash and without trailing slash. Eg: /api/v1
+	     * Credentials to connect to a cluster of cache services.
+	     * This option overrides `single`.
 	     */
-	    static createRouteConfigs(controllerDepIdentifier: string, isSoftDel: boolean, pathPrefix?: string): TrailsRouteConfigItem[];
-	    constructor(trailsApp: TrailsApp, _ClassDTO?: {
-	        new (): TModel;
-	    }, _repo?: ISoftDelRepository<TModel, any, any>);
-	    protected readonly validator: JoiModelValidator<TModel>;
-	    protected readonly translator: ModelAutoMapper<TModel>;
-	    countAll(req: express.Request, res: express.Response): Promise<void>;
-	    create(req: express.Request, res: express.Response): Promise<void>;
-	    deleteHard(req: express.Request, res: express.Response): Promise<void>;
-	    deleteSoft(req: express.Request, res: express.Response): Promise<void>;
-	    exists(req: express.Request, res: express.Response): Promise<void>;
-	    findByPk(req: express.Request, res: express.Response): Promise<void>;
-	    recover(req: express.Request, res: express.Response): Promise<void>;
-	    page(req: express.Request, res: express.Response): Promise<void>;
-	    patch(req: express.Request, res: express.Response): Promise<void>;
-	    update(req: express.Request, res: express.Response): Promise<void>;
-	}
-
-}
-declare module 'back-lib-common-web/dist/app/Types' {
-	export class Types {
-	    static readonly TRAILS_ADDON: string;
-	    static readonly TRAILS_APP: string;
-	    static readonly TRAILS_OPTS: string;
-	}
-
-}
-declare module 'back-lib-common-web/dist/app/TrailsServerAddOn' {
-	import TrailsApp = require('trails');
-	import { IDependencyContainer } from 'back-lib-common-util';
-	export class TrailsServerAddOn implements IServiceAddOn {
-	    	    constructor(depContainer: IDependencyContainer, trailsOpts: TrailsApp.TrailsAppOts);
-	    readonly server: TrailsApp;
-	    /**
-	     * @see IServiceAddOn.init
+	    cluster?: {
+	        /**
+	         * Address of remote cache service.
+	         */
+	        host?: string;
+	        /**
+	         * Port of remote cache service.
+	         */
+	        port?: number;
+	        /**
+	         * Password to login remote cache service.
+	         */
+	        password?: string;
+	    }[];
+	};
+	/**
+	 * Provides methods to read and write data to cache.
+	 */
+	export class CacheProvider {
+	    	    	    	    	    	    	    /**
+	     * Stores cache type (primitive, object) of each key.
 	     */
-	    init(): Promise<void>;
-	    /**
-	     * @see IServiceAddOn.deadLetter
+	    	    /**
+	     * Stores setTimeout token of each key.
 	     */
-	    deadLetter(): Promise<void>;
-	    /**
-	     * @see IServiceAddOn.dispose
+	    	    constructor(_options?: CacheProviderConstructorOpts);
+	    	    /**
+	     * Clears all local cache and disconnects from remote cache service.
 	     */
 	    dispose(): Promise<void>;
+	    /**
+	     * Removes a key from cache.
+	     */
+	    delete(key: string): Promise<void>;
+	    /**
+	     * Retrieves a string or number or boolean from cache.
+	     * @param {string} key The key to look up.
+	     * @param {boolean} forceRemote Skip local cache and fetch from remote server. Default is `false`.
+	     * @param {boolean} parseType (Only takes effect when `forceRemote=true`) If true, try to parse value to nearest possible primitive data type.
+	     * 		If false, always return string. Default is `true`. Set to `false` to save some performance.
+	     */
+	    getPrimitive(key: string, forceRemote?: boolean, parseType?: boolean): Promise<Primitive>;
+	    /**
+	     * Retrieves an array of strings or numbers or booleans from cache.
+	     * @param {string} key The key to look up.
+	     * @param {boolean} forceRemote Skip local cache and fetch from remote server. Default is `false`.
+	     */
+	    getArray(key: string, forceRemote?: boolean): Promise<Primitive[]>;
+	    /**
+	     * Retrieves an object from cache.
+	     * @param {string} key The key to look up.
+	     * @param {boolean} forceRemote Skip local cache and fetch from remote server. Default is `false`.
+	     * @param {boolean} parseType (Only takes effect when `forceRemote=true`) If true, try to parse every property value to nearest possible primitive data type.
+	     * 		If false, always return an object with string properties.
+	     * 		Default is `true`. Set to `false` to save some performance.
+	     */
+	    getObject(key: string, forceRemote?: boolean, parseType?: boolean): Promise<PrimitiveFlatJson>;
+	    /**
+	     * Saves a string or number or boolean to cache.
+	     * @param {string} key The key for later look up.
+	     * @param {Primitive} value Primitive value to save.
+	     * @param {number} duration Expiration time in seconds.
+	     * @param {CacheLevel} level Whether to save in local cache only, or remote only, or both.
+	     * 		If both, then local cache is kept in sync with remote value even when
+	     * 		this value is updated in remote service from another app process.
+	     */
+	    setPrimitive(key: string, value: Primitive, duration?: number, level?: CacheLevel): Promise<void>;
+	    /**
+	     * Saves an array to cache.
+	     * @param {string} key The key for later look up.
+	     * @param {Primitive[]} arr Primitive array to save.
+	     * @param {number} duration Expiration time in seconds.
+	     * @param {CacheLevel} level Whether to save in local cache only, or remote only, or both.
+	     * 		If both, then local cache is kept in sync with remote value even when
+	     * 		this value is updated in remote service from another app process.
+	     */
+	    setArray(key: string, arr: any[], duration?: number, level?: CacheLevel): Promise<void>;
+	    /**
+	     * Saves an object to cache.
+	     * @param {string} key The key for later look up.
+	     * @param {PrimitiveFlatJson} value Object value to save.
+	     * @param {number} duration Expiration time in seconds.
+	     * @param {CacheLevel} level Whether to save in local cache only, or remote only, or both.
+	     * 		If both, then local cache is kept in sync with remote value even when
+	     * 		this value is updated in remote service from another app process.
+	     */
+	    setObject(key: string, value: PrimitiveFlatJson, duration?: number, level?: CacheLevel): Promise<void>;
+	    	    	    	    	    	    	    	    /**
+	     * Removes the last lock from lock queue then returns it.
+	     */
+	    	    /**
+	     * Gets the first lock in queue.
+	     */
+	    	    /**
+	     * Adds a new lock at the beginning of lock queue.
+	     */
+	    	    	    	    	    	    	    	    	    	    	}
+
+}
+declare module 'back-cache-provider/dist/app/Types' {
+	export class Types {
+	    static readonly CACHE_PROVIDER: string;
 	}
 
 }
-declare module 'back-lib-common-web' {
-	export * from 'back-lib-common-web/dist/app/RestControllerBase';
-	export * from 'back-lib-common-web/dist/app/RestCRUDControllerBase';
-	export * from 'back-lib-common-web/dist/app/TrailsServerAddOn';
-	export * from 'back-lib-common-web/dist/app/Types';
+declare module 'back-cache-provider' {
+	import 'back-lib-common-util/dist/app/bluebirdify';
+	export * from 'back-cache-provider/dist/app/CacheProvider';
+	export * from 'back-cache-provider/dist/app/Types';
 
 }
