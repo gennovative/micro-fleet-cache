@@ -3,15 +3,12 @@
   "private": true,
   "version": "1.0.0",
   "description": "Contains utility to manage cache.",
-  "main": "./dist/app/server.js",
+  "main": "./dist/app/index.js",
+  "types": "./typings/app.d.ts",
   "repository": "git@bitbucket.org:firstinteractive/back-lib-cache-provider.git",
-  "scripts": {
-    "start": "node ./dist/app/server.js"
-  },
   "engines": {
     "node": "~7.10.1",
-    "npm": "~4.6.1",
-    "back-lib-common-constants": "git+ssh://git@bitbucket.org/firstinteractive/back-lib-common-constants.git#1.2.0"
+    "npm": "~4.6.1"
   },
   "dependencies": {
     "back-lib-common-util": "git+ssh://git@bitbucket.org:firstinteractive/back-lib-common-util.git#1.2.1",
