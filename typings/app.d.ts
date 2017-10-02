@@ -1,6 +1,6 @@
 /// <reference path="./global.d.ts" />
 
-declare module 'back-cache-provider/dist/app/CacheProvider' {
+declare module 'back-lib-cache-provider/dist/app/CacheProvider' {
 	export type Primitive = string | number | boolean;
 	export type PrimitiveFlatJson = {
 	    [x: string]: Primitive;
@@ -140,15 +140,15 @@ declare module 'back-cache-provider/dist/app/CacheProvider' {
 	    	    	    	    	    	    	    	    	    	    	}
 
 }
-declare module 'back-cache-provider/dist/app/Types' {
+declare module 'back-lib-cache-provider/dist/app/Types' {
 	export class Types {
 	    static readonly CACHE_PROVIDER: string;
 	}
 
 }
-declare module 'back-cache-provider' {
+declare module 'back-lib-cache-provider' {
 	import 'back-lib-common-util/dist/app/bluebirdify';
-	export * from 'back-cache-provider/dist/app/CacheProvider';
-	export * from 'back-cache-provider/dist/app/Types';
+	export * from 'back-lib-cache-provider/dist/app/CacheProvider';
+	export * from 'back-lib-cache-provider/dist/app/Types';
 
 }
