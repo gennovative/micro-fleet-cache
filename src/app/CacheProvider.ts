@@ -2,6 +2,8 @@ import * as redis from 'redis';
 import * as RedisClustr from 'redis-clustr';
 redis.Multi.prototype.execAsync = (<any>Promise).promisify(redis.Multi.prototype.exec);
 
+import { ICacheConnectionDetail } from 'back-lib-common-contracts';
+
 
 type CacheLockChain = Promise<void>[];
 
@@ -18,10 +20,11 @@ const EVENT_PREFIX = '__keyspace@0__:',
 	OBJECT = 1,
 	ARRAY = 2;
 
-export type Primitive = string | number | boolean;
+export type PrimitiveArg = string | number | boolean;
+export type PrimitiveResult = string & number & boolean;
 
 export type PrimitiveFlatJson = {
-	[x: string]: Primitive
+	[x: string]: PrimitiveArg
 };
 
 export enum CacheLevel {
@@ -36,52 +39,27 @@ export enum CacheLevel {
 	REMOTE = 2, // Binary: 10
 
 	/**
-	 * Cache in remote service and keeps sync with local memory.
+	 * Caches in remote service and keeps sync with local memory.
 	 */
 	BOTH = 3 // Binary: 11
 }
 
 export type CacheProviderConstructorOpts = {
 	/**
+	 * Is prepended in cache key to avoid key collision between cache instances.
+	 */
+	name: string,
+
+	/**
 	 * Credentials to connect to a single cache service.
 	 */
-	single?: {
-		/**
-		 * Address of remote cache service.
-		 */
-		host?: string,
-
-		/**
-		 * Port of remote cache service.
-		 */
-		port?: number,
-
-		/**
-		 * Password to login remote cache service.
-		 */
-		password?: string
-	},
+	single?: ICacheConnectionDetail,
 
 	/**
 	 * Credentials to connect to a cluster of cache services.
 	 * This option overrides `single`.
 	 */
-	cluster?: {
-		/**
-		 * Address of remote cache service.
-		 */
-		host?: string,
-
-		/**
-		 * Port of remote cache service.
-		 */
-		port?: number,
-
-		/**
-		 * Password to login remote cache service.
-		 */
-		password?: string
-	}[]
+	cluster?: ICacheConnectionDetail[]
 };
 
 /**
@@ -91,7 +69,7 @@ export class CacheProvider {
 	
 	private _engine: RedisClient;
 	private _engineSub: RedisClient;
-	private _localCache: { [x: string]: Primitive | PrimitiveFlatJson };
+	private _localCache: { [x: string]: PrimitiveArg | PrimitiveFlatJson };
 	private _cacheLocks: { [x: string]: CacheLockChain };
 	private _keyRegrex: RegExp;
 	
@@ -106,7 +84,7 @@ export class CacheProvider {
 	private _cacheExps: { [x: string]: NodeJS.Timer };
 
 
-	constructor(private _options: CacheProviderConstructorOpts = { cluster: null, single: null}) {
+	constructor(private _options: CacheProviderConstructorOpts) {
 		this._localCache = {
 			'@#!': null // Activate hash mode (vs. V8's hidden class mode)
 		};
@@ -146,6 +124,7 @@ export class CacheProvider {
 	 * Removes a key from cache.
 	 */
 	public async delete(key: string): Promise<void> {
+		key = this.realKey(key);
 		this.deleteLocal(key);
 		await this.syncOff(key);
 		await this._engine.delAsync(key);
@@ -158,7 +137,8 @@ export class CacheProvider {
 	 * @param {boolean} parseType (Only takes effect when `forceRemote=true`) If true, try to parse value to nearest possible primitive data type.
 	 * 		If false, always return string. Default is `true`. Set to `false` to save some performance.
 	 */
-	public getPrimitive(key: string, forceRemote: boolean = false, parseType: boolean = true): Promise<Primitive> {
+	public getPrimitive(key: string, forceRemote: boolean = false, parseType: boolean = true): Promise<PrimitiveResult> {
+		key = this.realKey(key);
 		if (this._cacheTypes[key] != null && this._cacheTypes[key] !== PRIMITIVE) { return Promise.resolve(null); }
 
 		return (!(forceRemote && this.hasEngine) && this._localCache[key] !== undefined)
@@ -170,7 +150,8 @@ export class CacheProvider {
 	 * @param {string} key The key to look up.
 	 * @param {boolean} forceRemote Skip local cache and fetch from remote server. Default is `false`.
 	 */
-	public async getArray(key: string, forceRemote: boolean = false): Promise<Primitive[]> {
+	public async getArray(key: string, forceRemote: boolean = false): Promise<PrimitiveResult[]> {
+		key = this.realKey(key);
 		if (this._cacheTypes[key] != null && this._cacheTypes[key] !== ARRAY) { return Promise.resolve(null); }
 		let stringified: string = (!(forceRemote && this.hasEngine) && this._localCache[key] !== undefined)
 			? this._localCache[key]
@@ -189,6 +170,7 @@ export class CacheProvider {
 	 * 		Default is `true`. Set to `false` to save some performance.
 	 */
 	public getObject(key: string, forceRemote: boolean = false, parseType: boolean = true): Promise<PrimitiveFlatJson> {
+		key = this.realKey(key);
 		if (this._cacheTypes[key] != null && this._cacheTypes[key] !== OBJECT) { return Promise.resolve(null); }
 
 		return (!(forceRemote && this.hasEngine) && this._localCache[key] !== undefined)
@@ -205,11 +187,12 @@ export class CacheProvider {
 	 * 		If both, then local cache is kept in sync with remote value even when
 	 * 		this value is updated in remote service from another app process.
 	 */
-	public async setPrimitive(key: string, value: Primitive, duration: number = 0, level?: CacheLevel): Promise<void> {
+	public async setPrimitive(key: string, value: PrimitiveArg, duration: number = 0, level?: CacheLevel): Promise<void> {
 		if (value == null) { return; }
 
 		let multi: MultiAsync;
 		level = this.defaultLevel(level);
+		key = this.realKey(key);
 		this._cacheTypes[key] = PRIMITIVE;
 
 		if (this.has(level, CacheLevel.LOCAL)) {
@@ -244,9 +227,10 @@ export class CacheProvider {
 	 */
 	public async setArray(key: string, arr: any[], duration: number = 0, level?: CacheLevel): Promise<void> {
 		if (!arr) { return; }
+
 		let stringified = JSON.stringify(arr),
 			promise = this.setPrimitive(key, stringified, duration, level);
-		this._cacheTypes[key] = ARRAY;
+		this._cacheTypes[this.realKey(key)] = ARRAY;
 		return promise;
 	}
 
@@ -262,6 +246,7 @@ export class CacheProvider {
 	public async setObject(key: string, value: PrimitiveFlatJson, duration?: number, level?: CacheLevel): Promise<void> {
 		let multi: MultiAsync;
 		level = this.defaultLevel(level);
+		key = this.realKey(key);
 		this._cacheTypes[key] = OBJECT;
 
 		if (this.has(level, CacheLevel.LOCAL)) {
@@ -292,8 +277,7 @@ export class CacheProvider {
 
 		return redis.createClient({
 			host: opts.host,
-			port: opts.port,
-			password: opts.password
+			port: opts.port
 		});
 	}
 
@@ -317,12 +301,12 @@ export class CacheProvider {
 
 	private async fetchObject(key: string, parseType: boolean): Promise<any> {
 		let data = await this._engine.hgetallAsync(key);
-		return parseType ? this.parseObjectType(data) : data;
+		return (this._cacheTypes[key] != ARRAY && parseType) ? this.parseObjectType(data) : data;
 	}
 
 	private async fetchPrimitive(key: string, parseType: boolean = true): Promise<any> {
 		let data = await this._engine.getAsync(key);
-		return parseType ? this.parsePrimitiveType(data) : data;
+		return (this._cacheTypes[key] != ARRAY && parseType) ? this.parsePrimitiveType(data) : data;
 	}
 
 	private createLockChain(): CacheLockChain {
@@ -404,10 +388,12 @@ export class CacheProvider {
 
 				switch (action) {
 					case 'set':
-						this._localCache[affectedKey] = await this.getPrimitive(affectedKey, true);
+						// this._localCache[affectedKey] = await this.getPrimitive(affectedKey, true);
+						this._localCache[affectedKey] = await this.fetchPrimitive(affectedKey, true);
 						break;
 					case 'hset':
-						this._localCache[affectedKey] = await this.getObject(affectedKey, true);
+						// this._localCache[affectedKey] = await this.getObject(affectedKey, true);
+						this._localCache[affectedKey] = await this.fetchObject(affectedKey, true);
 						break;
 					case 'del':
 						this.deleteLocal(affectedKey);
@@ -463,4 +449,7 @@ export class CacheProvider {
 		}
 	}
 
+	private realKey(key: string): string {
+		return `${this._options.name}::${key}`;
+	}
 }

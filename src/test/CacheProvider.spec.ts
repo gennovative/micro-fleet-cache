@@ -4,7 +4,10 @@ import * as redis from 'redis';
 import { CacheProvider, CacheLevel } from '../app';
 
 
-const KEY = 'TESTKEY';
+const 
+	FIRST_CACHE = 'firstcache',
+	LOCAL_CACHE = 'localcache',
+	KEY = 'TESTKEY';
 
 let cache: CacheProvider;
 
@@ -13,6 +16,7 @@ describe('CacheProvider (single)', function () {
 
 	beforeEach(() => {
 		cache = new CacheProvider({
+			name: FIRST_CACHE,
 			single: {
 				host: 'localhost'
 			}
@@ -34,7 +38,7 @@ describe('CacheProvider (single)', function () {
 			await cache.setPrimitive(KEY, value);
 
 			// Assert: Local value is different than remote value
-			expect(cache['_localCache'][KEY]).not.to.exist;
+			expect(cache['_localCache'][`${FIRST_CACHE}::${KEY}`]).not.to.exist;
 		});
 
 		it('Should save a value locally only', async () => {
@@ -46,12 +50,12 @@ describe('CacheProvider (single)', function () {
 				});
 
 			// Act
-			await client['setAsync'](KEY, valueTwo);
+			await client['setAsync'](`${FIRST_CACHE}::${KEY}`, valueTwo);
 			await cache.setPrimitive(KEY, valueOne, null, CacheLevel.LOCAL);
 
 			// Assert: Local value is different than remote value
-			expect(cache['_localCache'][KEY]).to.equal(valueOne);
-			expect(cache['_cacheTypes'][KEY]).to.exist;
+			expect(cache['_localCache'][`${FIRST_CACHE}::${KEY}`]).to.equal(valueOne);
+			expect(cache['_cacheTypes'][`${FIRST_CACHE}::${KEY}`]).to.exist;
 
 			let remote = await cache.getPrimitive(KEY, true); // Skip local cache
 			expect(remote).to.equal(valueTwo);
@@ -62,15 +66,18 @@ describe('CacheProvider (single)', function () {
 
 		it('Should default to save a value locally only if no cache service is provided', async () => {
 			// Arrange
-			let cache = new CacheProvider(/* No service */),
+			let cache = new CacheProvider({
+					name: LOCAL_CACHE,
+					/* No remote service */
+				}),
 				value = 'saved locally';
 
 			// Act
 			await cache.setPrimitive(KEY, value);
 
 			// Assert: Local value is different than remote value
-			expect(cache['_localCache'][KEY]).to.equal(value);
-			expect(cache['_cacheTypes'][KEY]).to.exist;
+			expect(cache['_localCache'][`${LOCAL_CACHE}::${KEY}`]).to.equal(value);
+			expect(cache['_cacheTypes'][`${LOCAL_CACHE}::${KEY}`]).to.exist;
 		});
 
 		it('Should save a value remote only', async () => {
@@ -81,9 +88,9 @@ describe('CacheProvider (single)', function () {
 			await cache.setPrimitive(KEY, value, null, CacheLevel.REMOTE);
 
 			// Assert: Local value does not exist
-			expect(cache['_localCache'][KEY]).not.to.exist;
-			expect(cache['_cacheExps'][KEY]).not.to.exist;
-			expect(cache['_cacheTypes'][KEY]).to.exist;
+			expect(cache['_localCache'][`${FIRST_CACHE}::${KEY}`]).not.to.exist;
+			expect(cache['_cacheExps'][`${FIRST_CACHE}::${KEY}`]).not.to.exist;
+			expect(cache['_cacheTypes'][`${FIRST_CACHE}::${KEY}`]).to.exist;
 			
 			// Assert: Remote value exists
 			let refetch = await cache.getPrimitive(KEY, true); // Skip local cache
@@ -99,9 +106,9 @@ describe('CacheProvider (single)', function () {
 
 			// Assert: Remote and local values are the same
 			let remote = await cache.getPrimitive(KEY, true), // Skip local cache
-				local = cache['_localCache'][KEY];
+				local = cache['_localCache'][`${FIRST_CACHE}::${KEY}`];
 			expect(remote).to.equal(local);
-			expect(cache['_cacheTypes'][KEY]).to.exist;
+			expect(cache['_cacheTypes'][`${FIRST_CACHE}::${KEY}`]).to.exist;
 		});
 
 		it('Should save a value then expire locally', (done) => {
@@ -157,7 +164,7 @@ describe('CacheProvider (single)', function () {
 					setTimeout(async () => {
 						// Assert
 						let remote = await cache.getPrimitive(KEY, true),
-							local = cache['_localCache'][KEY];
+							local = cache['_localCache'][`${FIRST_CACHE}::${KEY}`];
 						if (remote || local) {
 							console.log('Remote:', remote);
 							console.log('Local:', local);
@@ -188,16 +195,16 @@ describe('CacheProvider (single)', function () {
 				})
 				.then(async () => {
 					await Promise.all([
-						client['setAsync'](KEY, valueOneNew),
-						client['setAsync'](KEY_TWO, valueTwoNew)
+						client['setAsync'](`${FIRST_CACHE}::${KEY}`, valueOneNew),
+						client['setAsync'](`${FIRST_CACHE}::${KEY_TWO}`, valueTwoNew)
 					]);
 					client.quit();
 				})
 				.then(() => {
 					setTimeout(async () => {
 						// Assert
-						let refetchOne = cache['_localCache'][KEY],
-							refetchTwo = cache['_localCache'][KEY_TWO];
+						let refetchOne = cache['_localCache'][`${FIRST_CACHE}::${KEY}`],
+							refetchTwo = cache['_localCache'][`${FIRST_CACHE}::${KEY_TWO}`];
 						expect(refetchOne).to.equal(valueOneNew);
 						expect(refetchTwo).to.equal(valueTwoNew);
 						done();
@@ -279,9 +286,12 @@ describe('CacheProvider (single)', function () {
 
 		it('Should get value locally if no cache service is provided', async () => {
 			// Arrange
-			let cache = new CacheProvider(/* No service */),
+			let cache = new CacheProvider({
+					name: LOCAL_CACHE,
+					/* No remote service */
+				}),
 				value = 'a test string';
-			cache['_localCache'][KEY] = value;
+			cache['_localCache'][`${LOCAL_CACHE}::${KEY}`] = value;
 
 			// Act
 			let refetch = await cache.getPrimitive(KEY);
@@ -315,7 +325,7 @@ describe('CacheProvider (single)', function () {
 			await cache.setArray(KEY, value);
 
 			// Assert: Local value is different than remote value
-			expect(cache['_localCache'][KEY]).not.to.exist;
+			expect(cache['_localCache'][`${FIRST_CACHE}::${KEY}`]).not.to.exist;
 		});
 
 		it('Should save a primitive array', async () => {
@@ -400,9 +410,14 @@ describe('CacheProvider (single)', function () {
 
 		it('Should get value locally if no cache service is provided', async () => {
 			// Arrange
-			let cache = new CacheProvider(/* No service */),
+			let cache = new CacheProvider({
+					name: LOCAL_CACHE,
+					/* No remote service */
+				}),
 				arr = [1, '2', false];
-			await cache.setArray(KEY, arr);
+
+			// await cache.setArray(KEY, arr);
+			cache['_localCache'][`${LOCAL_CACHE}::${KEY}`] = JSON.stringify(arr);
 
 			// Act
 			let refetch = await cache.getArray(KEY);
@@ -423,7 +438,7 @@ describe('CacheProvider (single)', function () {
 			await cache.setObject(KEY, obj);
 
 			// Assert: Local value is different than remote value
-			expect(cache['_localCache'][KEY]).not.to.exist;
+			expect(cache['_localCache'][`${FIRST_CACHE}::${KEY}`]).not.to.exist;
 		});
 
 		it('Should save an object locally only', async () => {
@@ -441,12 +456,12 @@ describe('CacheProvider (single)', function () {
 				});
 
 			// Act
-			await client['hmsetAsync'](KEY, objTwo);
+			await client['hmsetAsync'](`${FIRST_CACHE}::${KEY}`, objTwo);
 			await cache.setObject(KEY, objOne, null, CacheLevel.LOCAL);
 
 			// Assert: Local value is different than remote value
-			expect(cache['_localCache'][KEY]).to.deep.equal(objOne);
-			expect(cache['_cacheTypes'][KEY]).to.exist;
+			expect(cache['_localCache'][`${FIRST_CACHE}::${KEY}`]).to.deep.equal(objOne);
+			expect(cache['_cacheTypes'][`${FIRST_CACHE}::${KEY}`]).to.exist;
 
 			let remote = await cache.getObject(KEY, true); // Skip local cache
 			expect(remote).to.deep.equal(objTwo);
@@ -457,7 +472,10 @@ describe('CacheProvider (single)', function () {
 
 		it('Should default to save an object locally only if no cache service is provided', async () => {
 			// Arrange
-			let cache = new CacheProvider(/* No service */),
+			let cache = new CacheProvider({
+					name: LOCAL_CACHE,
+					/* No remote service */
+				}),
 				obj = {
 					name: 'Local Gennova',
 					age: 55
@@ -467,8 +485,8 @@ describe('CacheProvider (single)', function () {
 			await cache.setObject(KEY, obj);
 
 			// Assert: Local value is different than remote value
-			expect(cache['_localCache'][KEY]).to.deep.equal(obj);
-			expect(cache['_cacheTypes'][KEY]).to.exist;
+			expect(cache['_localCache'][`${LOCAL_CACHE}::${KEY}`]).to.deep.equal(obj);
+			expect(cache['_cacheTypes'][`${LOCAL_CACHE}::${KEY}`]).to.exist;
 		});
 
 		it('Should save an object remote only', async () => {
@@ -482,9 +500,9 @@ describe('CacheProvider (single)', function () {
 			await cache.setObject(KEY, obj, null, CacheLevel.REMOTE);
 
 			// Assert: Local value does not exist
-			expect(cache['_localCache'][KEY]).not.to.exist;
-			expect(cache['_cacheExps'][KEY]).not.to.exist;
-			expect(cache['_cacheTypes'][KEY]).to.exist;
+			expect(cache['_localCache'][`${FIRST_CACHE}::${KEY}`]).not.to.exist;
+			expect(cache['_cacheExps'][`${FIRST_CACHE}::${KEY}`]).not.to.exist;
+			expect(cache['_cacheTypes'][`${FIRST_CACHE}::${KEY}`]).to.exist;
 
 			// Assert: Remote value exists
 			let refetch = await cache.getObject(KEY, true); // Skip local cache
@@ -503,9 +521,9 @@ describe('CacheProvider (single)', function () {
 
 			// Assert: Remote and local values are the same
 			let remote = await cache.getObject(KEY, true), // Skip local cache
-				local = cache['_localCache'][KEY];
+				local = cache['_localCache'][`${FIRST_CACHE}::${KEY}`];
 			expect(remote).to.deep.equal(local);
-			expect(cache['_cacheTypes'][KEY]).to.exist;
+			expect(cache['_cacheTypes'][`${FIRST_CACHE}::${KEY}`]).to.exist;
 		});
 
 		it('Should save an object then expire locally', (done) => {
@@ -574,13 +592,15 @@ describe('CacheProvider (single)', function () {
 			// Act
 			cache.setObject(KEY, objOne, null, CacheLevel.BOTH)
 				.then(async () => {
-					await client.multi().del(KEY).hmset(KEY, objTwo)['execAsync']();
+					await client.multi()
+						.del(`${FIRST_CACHE}::${KEY}`)
+						.hmset(`${FIRST_CACHE}::${KEY}`, objTwo)['execAsync']();
 					client.quit();
 				})
 				.then(() => {
 					setTimeout(async () => {
 						// Assert
-						let refetch: any = cache['_localCache'][KEY];
+						let refetch: any = cache['_localCache'][`${FIRST_CACHE}::${KEY}`];
 						expect(refetch).to.exist;
 						expect(refetch.name).not.to.exist;
 						expect(refetch.age).not.to.exist;
@@ -632,13 +652,16 @@ describe('CacheProvider (single)', function () {
 
 		it('Should get value locally if no cache service is provided', async () => {
 			// Arrange
-			let cache = new CacheProvider(/* No service */),
+			let cache = new CacheProvider({
+					name: LOCAL_CACHE,
+					/* No remote service */
+				}),
 				obj = {
 					name: 'Local Gennova',
 					age: 55,
 					alive: true
 				};
-			cache['_localCache'][KEY] = obj;
+			cache['_localCache'][`${LOCAL_CACHE}::${KEY}`] = obj;
 
 			// Act
 			let refetch = await cache.getObject(KEY);

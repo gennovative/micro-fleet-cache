@@ -4,6 +4,7 @@ function __export(m) {
 }
 Object.defineProperty(exports, "__esModule", { value: true });
 require("back-lib-common-util/dist/app/bluebirdify");
+__export(require("./CacheAddOn"));
 __export(require("./CacheProvider"));
 __export(require("./Types"));
 

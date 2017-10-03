@@ -1,9 +1,11 @@
 /// <reference path="./global.d.ts" />
 
 declare module 'back-lib-cache-provider/dist/app/CacheProvider' {
-	export type Primitive = string | number | boolean;
+	import { ICacheConnectionDetail } from 'back-lib-common-contracts';
+	export type PrimitiveArg = string | number | boolean;
+	export type PrimitiveResult = string & number & boolean;
 	export type PrimitiveFlatJson = {
-	    [x: string]: Primitive;
+	    [x: string]: PrimitiveArg;
 	};
 	export enum CacheLevel {
 	    /**
@@ -15,46 +17,24 @@ declare module 'back-lib-cache-provider/dist/app/CacheProvider' {
 	     */
 	    REMOTE = 2,
 	    /**
-	     * Cache in remote service and keeps sync with local memory.
+	     * Caches in remote service and keeps sync with local memory.
 	     */
 	    BOTH = 3,
 	}
 	export type CacheProviderConstructorOpts = {
 	    /**
+	     * Is prepended in cache key to avoid key collision between cache instances.
+	     */
+	    name: string;
+	    /**
 	     * Credentials to connect to a single cache service.
 	     */
-	    single?: {
-	        /**
-	         * Address of remote cache service.
-	         */
-	        host?: string;
-	        /**
-	         * Port of remote cache service.
-	         */
-	        port?: number;
-	        /**
-	         * Password to login remote cache service.
-	         */
-	        password?: string;
-	    };
+	    single?: ICacheConnectionDetail;
 	    /**
 	     * Credentials to connect to a cluster of cache services.
 	     * This option overrides `single`.
 	     */
-	    cluster?: {
-	        /**
-	         * Address of remote cache service.
-	         */
-	        host?: string;
-	        /**
-	         * Port of remote cache service.
-	         */
-	        port?: number;
-	        /**
-	         * Password to login remote cache service.
-	         */
-	        password?: string;
-	    }[];
+	    cluster?: ICacheConnectionDetail[];
 	};
 	/**
 	 * Provides methods to read and write data to cache.
@@ -66,7 +46,7 @@ declare module 'back-lib-cache-provider/dist/app/CacheProvider' {
 	    	    /**
 	     * Stores setTimeout token of each key.
 	     */
-	    	    constructor(_options?: CacheProviderConstructorOpts);
+	    	    constructor(_options: CacheProviderConstructorOpts);
 	    	    /**
 	     * Clears all local cache and disconnects from remote cache service.
 	     */
@@ -82,13 +62,13 @@ declare module 'back-lib-cache-provider/dist/app/CacheProvider' {
 	     * @param {boolean} parseType (Only takes effect when `forceRemote=true`) If true, try to parse value to nearest possible primitive data type.
 	     * 		If false, always return string. Default is `true`. Set to `false` to save some performance.
 	     */
-	    getPrimitive(key: string, forceRemote?: boolean, parseType?: boolean): Promise<Primitive>;
+	    getPrimitive(key: string, forceRemote?: boolean, parseType?: boolean): Promise<PrimitiveResult>;
 	    /**
 	     * Retrieves an array of strings or numbers or booleans from cache.
 	     * @param {string} key The key to look up.
 	     * @param {boolean} forceRemote Skip local cache and fetch from remote server. Default is `false`.
 	     */
-	    getArray(key: string, forceRemote?: boolean): Promise<Primitive[]>;
+	    getArray(key: string, forceRemote?: boolean): Promise<PrimitiveResult[]>;
 	    /**
 	     * Retrieves an object from cache.
 	     * @param {string} key The key to look up.
@@ -107,7 +87,7 @@ declare module 'back-lib-cache-provider/dist/app/CacheProvider' {
 	     * 		If both, then local cache is kept in sync with remote value even when
 	     * 		this value is updated in remote service from another app process.
 	     */
-	    setPrimitive(key: string, value: Primitive, duration?: number, level?: CacheLevel): Promise<void>;
+	    setPrimitive(key: string, value: PrimitiveArg, duration?: number, level?: CacheLevel): Promise<void>;
 	    /**
 	     * Saves an array to cache.
 	     * @param {string} key The key for later look up.
@@ -137,17 +117,39 @@ declare module 'back-lib-cache-provider/dist/app/CacheProvider' {
 	    	    /**
 	     * Adds a new lock at the beginning of lock queue.
 	     */
-	    	    	    	    	    	    	    	    	    	    	}
+	    	    	    	    	    	    	    	    	    	    	    	}
 
 }
 declare module 'back-lib-cache-provider/dist/app/Types' {
 	export class Types {
 	    static readonly CACHE_PROVIDER: string;
+	    static readonly CACHE_ADDON: string;
+	}
+
+}
+declare module 'back-lib-cache-provider/dist/app/CacheAddOn' {
+	import { IConfigurationProvider } from 'back-lib-common-contracts';
+	import { IDependencyContainer } from 'back-lib-common-util';
+	export class CacheAddOn implements IServiceAddOn {
+	    	    	    	    constructor(_configProvider: IConfigurationProvider, _depContainer: IDependencyContainer);
+	    /**
+	     * @see IServiceAddOn.init
+	     */
+	    init(): Promise<void>;
+	    /**
+	     * @see IServiceAddOn.deadLetter
+	     */
+	    deadLetter(): Promise<void>;
+	    /**
+	     * @see IServiceAddOn.dispose
+	     */
+	    dispose(): Promise<void>;
 	}
 
 }
 declare module 'back-lib-cache-provider' {
 	import 'back-lib-common-util/dist/app/bluebirdify';
+	export * from 'back-lib-cache-provider/dist/app/CacheAddOn';
 	export * from 'back-lib-cache-provider/dist/app/CacheProvider';
 	export * from 'back-lib-cache-provider/dist/app/Types';
 

@@ -23,7 +23,7 @@ var CacheLevel;
      */
     CacheLevel[CacheLevel["REMOTE"] = 2] = "REMOTE";
     /**
-     * Cache in remote service and keeps sync with local memory.
+     * Caches in remote service and keeps sync with local memory.
      */
     CacheLevel[CacheLevel["BOTH"] = 3] = "BOTH"; // Binary: 11
 })(CacheLevel = exports.CacheLevel || (exports.CacheLevel = {}));
@@ -31,7 +31,7 @@ var CacheLevel;
  * Provides methods to read and write data to cache.
  */
 class CacheProvider {
-    constructor(_options = { cluster: null, single: null }) {
+    constructor(_options) {
         this._options = _options;
         this._localCache = {
             '@#!': null // Activate hash mode (vs. V8's hidden class mode)
@@ -72,6 +72,7 @@ class CacheProvider {
      */
     delete(key) {
         return __awaiter(this, void 0, void 0, function* () {
+            key = this.realKey(key);
             this.deleteLocal(key);
             yield this.syncOff(key);
             yield this._engine.delAsync(key);
@@ -85,6 +86,7 @@ class CacheProvider {
      * 		If false, always return string. Default is `true`. Set to `false` to save some performance.
      */
     getPrimitive(key, forceRemote = false, parseType = true) {
+        key = this.realKey(key);
         if (this._cacheTypes[key] != null && this._cacheTypes[key] !== PRIMITIVE) {
             return Promise.resolve(null);
         }
@@ -99,6 +101,7 @@ class CacheProvider {
      */
     getArray(key, forceRemote = false) {
         return __awaiter(this, void 0, void 0, function* () {
+            key = this.realKey(key);
             if (this._cacheTypes[key] != null && this._cacheTypes[key] !== ARRAY) {
                 return Promise.resolve(null);
             }
@@ -117,6 +120,7 @@ class CacheProvider {
      * 		Default is `true`. Set to `false` to save some performance.
      */
     getObject(key, forceRemote = false, parseType = true) {
+        key = this.realKey(key);
         if (this._cacheTypes[key] != null && this._cacheTypes[key] !== OBJECT) {
             return Promise.resolve(null);
         }
@@ -140,6 +144,7 @@ class CacheProvider {
             }
             let multi;
             level = this.defaultLevel(level);
+            key = this.realKey(key);
             this._cacheTypes[key] = PRIMITIVE;
             if (this.has(level, CacheLevel.LOCAL)) {
                 this._localCache[key] = value;
@@ -174,7 +179,7 @@ class CacheProvider {
                 return;
             }
             let stringified = JSON.stringify(arr), promise = this.setPrimitive(key, stringified, duration, level);
-            this._cacheTypes[key] = ARRAY;
+            this._cacheTypes[this.realKey(key)] = ARRAY;
             return promise;
         });
     }
@@ -191,6 +196,7 @@ class CacheProvider {
         return __awaiter(this, void 0, void 0, function* () {
             let multi;
             level = this.defaultLevel(level);
+            key = this.realKey(key);
             this._cacheTypes[key] = OBJECT;
             if (this.has(level, CacheLevel.LOCAL)) {
                 this._localCache[key] = value;
@@ -217,8 +223,7 @@ class CacheProvider {
         }
         return redis.createClient({
             host: opts.host,
-            port: opts.port,
-            password: opts.password
+            port: opts.port
         });
     }
     defaultLevel(level) {
@@ -239,13 +244,13 @@ class CacheProvider {
     fetchObject(key, parseType) {
         return __awaiter(this, void 0, void 0, function* () {
             let data = yield this._engine.hgetallAsync(key);
-            return parseType ? this.parseObjectType(data) : data;
+            return (this._cacheTypes[key] != ARRAY && parseType) ? this.parseObjectType(data) : data;
         });
     }
     fetchPrimitive(key, parseType = true) {
         return __awaiter(this, void 0, void 0, function* () {
             let data = yield this._engine.getAsync(key);
-            return parseType ? this.parsePrimitiveType(data) : data;
+            return (this._cacheTypes[key] != ARRAY && parseType) ? this.parsePrimitiveType(data) : data;
         });
     }
     createLockChain() {
@@ -312,10 +317,12 @@ class CacheProvider {
                     yield this.lockKey(key);
                     switch (action) {
                         case 'set':
-                            this._localCache[affectedKey] = yield this.getPrimitive(affectedKey, true);
+                            // this._localCache[affectedKey] = await this.getPrimitive(affectedKey, true);
+                            this._localCache[affectedKey] = yield this.fetchPrimitive(affectedKey, true);
                             break;
                         case 'hset':
-                            this._localCache[affectedKey] = yield this.getObject(affectedKey, true);
+                            // this._localCache[affectedKey] = await this.getObject(affectedKey, true);
+                            this._localCache[affectedKey] = yield this.fetchObject(affectedKey, true);
                             break;
                         case 'del':
                             this.deleteLocal(affectedKey);
@@ -368,6 +375,9 @@ class CacheProvider {
         if (duration > 0) {
             this._cacheExps[key] = setTimeout(() => this.deleteLocal(key), duration * 1000);
         }
+    }
+    realKey(key) {
+        return `${this._options.name}::${key}`;
     }
 }
 exports.CacheProvider = CacheProvider;
