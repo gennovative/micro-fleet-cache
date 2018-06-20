@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import * as redis from 'redis';
+import { Maybe, InvalidArgumentException } from '@micro-fleet/common';
 
 import { CacheProvider, CacheLevel } from '../app';
 
@@ -12,7 +13,7 @@ const
 let cache: CacheProvider;
 
 describe('CacheProvider (single)', function () {
-	this.timeout(10000);
+	// this.timeout(60000);
 
 	beforeEach(() => {
 		cache = new CacheProvider({
@@ -217,53 +218,55 @@ describe('CacheProvider (single)', function () {
 	describe('getPrimitive', () => {
 		it('Should get string value', async () => {
 			// Arrange
-			let value = 'a test string';
+			const value = 'a test string';
 			await cache.setPrimitive(KEY, value);
 
 			// Act
-			let refetch = await cache.getPrimitive(KEY, true, true);
+			const refetch: Maybe<PrimitiveType> = await cache.getPrimitive(KEY, true, true);
 
 			// Assert
-			expect(refetch).to.equal(value);
-			expect(typeof refetch).to.equal('string');
+			expect(refetch.hasValue).to.be.true;
+			expect(refetch.value).to.equal(value);
 		});
 
 		it('Should get number value as string', async () => {
 			// Arrange
-			let value = 123;
+			const value = 123;
 			await cache.setPrimitive(KEY, value);
 
 			// Act
 			const PARSE = false;
-			let refetch = await cache.getPrimitive(KEY, true, PARSE);
+			const refetch: Maybe<PrimitiveType> = await cache.getPrimitive(KEY, true, PARSE);
 
 			// Assert
-			expect(refetch).to.equal(value + '');
-			expect(typeof refetch).to.equal('string');
+			expect(refetch.hasValue).to.be.true;
+			expect(typeof refetch.value).to.equal('string');
+			expect(refetch.value).to.equal(value + '');
 		});
 
 		it('Should get number value as number', async () => {
 			// Arrange
-			let value = 123;
+			const value = 123;
 			await cache.setPrimitive(KEY, value);
 
 			// Act
 			const PARSE = true;
-			let refetch = await cache.getPrimitive(KEY, true, PARSE);
+			const refetch: Maybe<PrimitiveType> = await cache.getPrimitive(KEY, true, PARSE);
 
 			// Assert
-			expect(refetch).to.equal(value);
+			expect(refetch.hasValue).to.be.true;
 			expect(typeof refetch).to.equal('number');
+			expect(refetch).to.equal(value);
 		});
 
 		it('Should get boolean value as string', async () => {
 			// Arrange
-			let value = true;
+			const value = true;
 			await cache.setPrimitive(KEY, value);
 
 			// Act
 			const PARSE = false;
-			let refetch = await cache.getPrimitive(KEY, true, PARSE);
+			const refetch: Maybe<PrimitiveType> = await cache.getPrimitive(KEY, true, PARSE);
 
 			// Assert
 			expect(refetch).to.equal(value + '');
@@ -272,45 +275,50 @@ describe('CacheProvider (single)', function () {
 
 		it('Should get boolean value as boolean', async () => {
 			// Arrange
-			let value = true;
+			const value = true;
 			await cache.setPrimitive(KEY, value);
 
 			// Act
 			const PARSE = true;
-			let refetch = await cache.getPrimitive(KEY, true, PARSE);
+			const refetch = await cache.getPrimitive(KEY, true, PARSE);
 
 			// Assert
-			expect(refetch).to.equal(value);
+			expect(refetch.hasValue).to.be.true;
 			expect(typeof refetch).to.equal('boolean');
+			expect(refetch).to.equal(value);
 		});
 
 		it('Should get value locally if no cache service is provided', async () => {
 			// Arrange
-			let cache = new CacheProvider({
+			const cache = new CacheProvider({
 					name: LOCAL_CACHE,
 					/* No remote service */
 				}),
 				value = 'a test string';
+
+			// Inject value to local cache
 			cache['_localCache'][`${LOCAL_CACHE}::${KEY}`] = value;
 
 			// Act
-			let refetch = await cache.getPrimitive(KEY);
+			const refetch: Maybe<PrimitiveType> = await cache.getPrimitive(KEY);
 
 			// Assert
-			expect(refetch).to.equal(value);
+			expect(refetch.hasValue).to.be.true;
 			expect(typeof refetch).to.equal('string');
+			expect(refetch).to.equal(value);
 		});
 
-		it('Should return null if try to get non-primitive value', async () => {
+		it('Should return empty if try to get non-primitive value', async () => {
 			// Arrange
-			let value = 'a test string';
+			const value = 'a test string';
 			await cache.setPrimitive(KEY, value);
 
 			// Act
-			let refetch = await cache.getObject(KEY);
+			const refetch: Maybe<PrimitiveFlatJson> = await cache.getObject(KEY);
 
 			// Assert
-			expect(refetch).to.be.null;
+			expect(refetch).to.exist;
+			expect(refetch.hasValue).to.be.false;
 		});
 
 	}); // describe 'getPrimitive'
@@ -364,19 +372,20 @@ describe('CacheProvider (single)', function () {
 	describe('getArray', () => {
 		it('Should get a primitive array', async () => {
 			// Arrange
-			let arr = [1, '2', false];
+			const arr = [1, '2', false];
 			await cache.setArray(KEY, arr);
 
 			// Act
-			let refetch = await cache.getArray(KEY, true);
+			const refetch: Maybe<PrimitiveType[]> = await cache.getArray(KEY, true);
 
 			// Assert
+			expect(refetch.hasValue).to.be.true;
 			expect(refetch).to.deep.equal(arr);
 		});
 
 		it('Should get an object array', async () => {
 			// Arrange
-			let arr = [
+			const arr = [
 				{
 					name: 'Local Gennova',
 					age: 55,
@@ -390,27 +399,29 @@ describe('CacheProvider (single)', function () {
 			await cache.setArray(KEY, arr);
 
 			// Act
-			let refetch = await cache.getArray(KEY, true);
+			const refetch: Maybe<PrimitiveType[]> = await cache.getArray(KEY, true);
 
 			// Assert
+			expect(refetch.hasValue).to.be.true;
 			expect(refetch).to.deep.equal(arr);
 		});
 
 		it('Should return null if try to get non-array value', async () => {
 			// Arrange
-			let arr = 'a test string';
+			const arr = 'a test string';
 			await cache.setPrimitive(KEY, arr);
 
 			// Act
-			let refetch = await cache.getArray(KEY);
+			const refetch: Maybe<PrimitiveType[]> = await cache.getArray(KEY);
 
 			// Assert
+			expect(refetch.hasValue).to.be.true;
 			expect(refetch).to.be.null;
 		});
 
 		it('Should get value locally if no cache service is provided', async () => {
 			// Arrange
-			let cache = new CacheProvider({
+			const cache = new CacheProvider({
 					name: LOCAL_CACHE,
 					/* No remote service */
 				}),
@@ -420,9 +431,10 @@ describe('CacheProvider (single)', function () {
 			cache['_localCache'][`${LOCAL_CACHE}::${KEY}`] = JSON.stringify(arr);
 
 			// Act
-			let refetch = await cache.getArray(KEY);
+			const refetch: Maybe<PrimitiveType[]> = await cache.getArray(KEY);
 
 			// Assert
+			expect(refetch.hasValue).to.be.true;
 			expect(refetch).to.deep.equal(arr);
 		});
 
@@ -430,20 +442,27 @@ describe('CacheProvider (single)', function () {
 
 
 	describe('setObject', () => {
-		it('Should do nothing if value is null of undefined', async () => {
+		it('Should throw exception if value is null of undefined', async () => {
 			// Arrange
-			let obj = null;
+			const obj: any = null;
+			let exception: InvalidArgumentException;
 
 			// Act
-			await cache.setObject(KEY, obj);
+			try {
+				await cache.setObject(KEY, obj);
+			} catch (ex) {
+				exception = ex;
+			}
 
-			// Assert: Local value is different than remote value
+			// Assert
 			expect(cache['_localCache'][`${FIRST_CACHE}::${KEY}`]).not.to.exist;
+			expect(exception).to.exist;
+			expect(exception).to.be.instanceOf(InvalidArgumentException);
 		});
 
 		it('Should save an object locally only', async () => {
 			// Arrange
-			let objOne = {
+			const objOne = {
 					name: 'Local Gennova',
 					age: 55
 				},
@@ -463,7 +482,7 @@ describe('CacheProvider (single)', function () {
 			expect(cache['_localCache'][`${FIRST_CACHE}::${KEY}`]).to.deep.equal(objOne);
 			expect(cache['_cacheTypes'][`${FIRST_CACHE}::${KEY}`]).to.exist;
 
-			let remote = await cache.getObject(KEY, true); // Skip local cache
+			const remote = await cache.getObject(KEY, true); // Skip local cache
 			expect(remote).to.deep.equal(objTwo);
 
 			// Clean up
@@ -472,7 +491,7 @@ describe('CacheProvider (single)', function () {
 
 		it('Should default to save an object locally only if no cache service is provided', async () => {
 			// Arrange
-			let cache = new CacheProvider({
+			const cache = new CacheProvider({
 					name: LOCAL_CACHE,
 					/* No remote service */
 				}),
@@ -491,7 +510,7 @@ describe('CacheProvider (single)', function () {
 
 		it('Should save an object remote only', async () => {
 			// Arrange
-			let obj = {
+			const obj = {
 					name: 'Remote Gennova',
 					age: 99
 				};
@@ -505,13 +524,13 @@ describe('CacheProvider (single)', function () {
 			expect(cache['_cacheTypes'][`${FIRST_CACHE}::${KEY}`]).to.exist;
 
 			// Assert: Remote value exists
-			let refetch = await cache.getObject(KEY, true); // Skip local cache
+			const refetch = await cache.getObject(KEY, true); // Skip local cache
 			expect(refetch).to.deep.equal(obj);
 		});
 
 		it('Should save an object both remotely and locally', async () => {
 			// Arrange
-			let obj = {
+			const obj = {
 					name: 'Gennova everywhere',
 					age: 124
 				};
@@ -520,7 +539,7 @@ describe('CacheProvider (single)', function () {
 			await cache.setObject(KEY, obj, null, CacheLevel.BOTH);
 
 			// Assert: Remote and local values are the same
-			let remote = await cache.getObject(KEY, true), // Skip local cache
+			const remote = await cache.getObject(KEY, true), // Skip local cache
 				local = cache['_localCache'][`${FIRST_CACHE}::${KEY}`];
 			expect(remote).to.deep.equal(local);
 			expect(cache['_cacheTypes'][`${FIRST_CACHE}::${KEY}`]).to.exist;
@@ -528,7 +547,7 @@ describe('CacheProvider (single)', function () {
 
 		it('Should save an object then expire locally', (done) => {
 			// Arrange
-			let obj = {
+			const obj = {
 					name: 'Gennova everywhere',
 					age: 124
 				},
@@ -539,7 +558,7 @@ describe('CacheProvider (single)', function () {
 				.then(() => {
 					setTimeout(async () => {
 						// Assert
-						let refetch = await cache.getObject(KEY, false);
+						const refetch = await cache.getObject(KEY, false);
 						if (refetch) {
 							console.log('Refetch:', refetch);
 						}
@@ -547,12 +566,11 @@ describe('CacheProvider (single)', function () {
 						done();
 					}, 1100); // Wait until key expires
 				});
-
 		});
 
 		it('Should save an object then expire remotely', (done) => {
 			// Arrange
-			let obj = {
+			const obj = {
 					name: 'Gennova everywhere',
 					age: 124
 				},
@@ -563,7 +581,7 @@ describe('CacheProvider (single)', function () {
 				.then(() => {
 					setTimeout(async () => {
 						// Assert
-						let refetch = await cache.getObject(KEY, true);
+						const refetch = await cache.getObject(KEY, true);
 						if (refetch) {
 							console.log('Refetch:', refetch);
 						}
@@ -577,7 +595,7 @@ describe('CacheProvider (single)', function () {
 		it('Should save an object then keep sync', (done) => {
 
 			// Arrange
-			let objOne = {
+			const objOne = {
 					name: 'Sync Gennova',
 					age: 987
 				},
@@ -600,7 +618,7 @@ describe('CacheProvider (single)', function () {
 				.then(() => {
 					setTimeout(async () => {
 						// Assert
-						let refetch: any = cache['_localCache'][`${FIRST_CACHE}::${KEY}`];
+						const refetch: any = cache['_localCache'][`${FIRST_CACHE}::${KEY}`];
 						expect(refetch).to.exist;
 						expect(refetch.name).not.to.exist;
 						expect(refetch.age).not.to.exist;
@@ -615,7 +633,7 @@ describe('CacheProvider (single)', function () {
 	describe('getObject', () => {
 		it('Should get object with all string properties', async () => {
 			// Arrange
-			let obj = {
+			const obj = {
 					name: 'Local Gennova',
 					age: 55,
 					alive: true
@@ -624,12 +642,14 @@ describe('CacheProvider (single)', function () {
 
 			// Act
 			const PARSE = false;
-			let refetch = await cache.getObject(KEY, true, PARSE);
+			const refetch: Maybe<PrimitiveFlatJson> = await cache.getObject(KEY, true, PARSE);
 
 			// Assert
-			for (let p in refetch) {
-				expect(refetch[p]).to.equal(obj[p] + '');
-				expect(typeof refetch[p]).to.equal('string');
+			expect(refetch.hasValue).to.be.true;
+			const val = refetch.value;
+			for (let p in val) {
+				expect(val[p]).to.equal(obj[p] + '');
+				expect(typeof val[p]).to.equal('string');
 			}
 		});
 

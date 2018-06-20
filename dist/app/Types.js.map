@@ -1,1 +1,1 @@
-{"version":3,"sources":["app/Types.ts"],"names":[],"mappings":";;AAAA;;AACwB,oBAAc,GAAG,8BAA8B,CAAC;AAChD,iBAAW,GAAG,2BAA2B,CAAC;AAFlE,sBAGC","file":"Types.js","sourcesContent":["export class Types {\r\n\tpublic static readonly CACHE_PROVIDER = 'cache-provider.CacheProvider';\r\n\tpublic static readonly CACHE_ADDON = 'cache-provider.CacheAddOn';\r\n}"]}
+{"version":3,"file":"Types.js","sourceRoot":"","sources":["../../src/app/Types.ts"],"names":[],"mappings":";;AAAA;;AACwB,oBAAc,GAAG,8BAA8B,CAAC;AAChD,iBAAW,GAAG,2BAA2B,CAAC;AAFlE,sBAGC"}

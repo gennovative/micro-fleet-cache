@@ -1,3 +1,3 @@
-/**
- * This file is for global definitions.
- */
+// This file is for global definitions.
+
+declare module 'redis-clustr';

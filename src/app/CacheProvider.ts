@@ -2,7 +2,7 @@ import * as redis from 'redis';
 import * as RedisClustr from 'redis-clustr';
 redis.Multi.prototype.execAsync = (<any>Promise).promisify(redis.Multi.prototype.exec);
 
-import { ICacheConnectionDetail } from 'back-lib-common-contracts';
+import { CacheConnectionDetail, Maybe, Guard } from '@micro-fleet/common';
 
 
 type CacheLockChain = Promise<void>[];
@@ -19,13 +19,6 @@ const EVENT_PREFIX = '__keyspace@0__:',
 	PRIMITIVE = 0,
 	OBJECT = 1,
 	ARRAY = 2;
-
-export type PrimitiveArg = string | number | boolean;
-export type PrimitiveResult = string & number & boolean;
-
-export type PrimitiveFlatJson = {
-	[x: string]: PrimitiveArg
-};
 
 export enum CacheLevel {
 	/**
@@ -53,13 +46,13 @@ export type CacheProviderConstructorOpts = {
 	/**
 	 * Credentials to connect to a single cache service.
 	 */
-	single?: ICacheConnectionDetail,
+	single?: CacheConnectionDetail,
 
 	/**
 	 * Credentials to connect to a cluster of cache services.
 	 * This option overrides `single`.
 	 */
-	cluster?: ICacheConnectionDetail[]
+	cluster?: CacheConnectionDetail[]
 };
 
 /**
@@ -69,7 +62,7 @@ export class CacheProvider {
 	
 	private _engine: RedisClient;
 	private _engineSub: RedisClient;
-	private _localCache: { [x: string]: PrimitiveArg | PrimitiveFlatJson };
+	private _localCache: { [x: string]: PrimitiveType | PrimitiveFlatJson };
 	private _cacheLocks: { [x: string]: CacheLockChain };
 	private _keyRegrex: RegExp;
 	
@@ -93,17 +86,17 @@ export class CacheProvider {
 		this._cacheLocks = {};
 
 		if (_options.cluster) {
-			this.promisify(RedisClustr.prototype);
+			this._promisify(RedisClustr.prototype);
 			this._engine = new RedisClustr({
 				servers: _options.cluster
 			});
 		} else {
-			this.promisify(redis.RedisClient.prototype);
-			this._engine = this.connectSingle();
+			this._promisify(redis.RedisClient.prototype);
+			this._engine = this._connectSingle();
 		}
 	}
 
-	private get hasEngine(): boolean {
+	private get _hasEngine(): boolean {
 		return (this._engine != null);
 	}
 
@@ -111,7 +104,7 @@ export class CacheProvider {
 	 * Clears all local cache and disconnects from remote cache service.
 	 */
 	public async dispose(): Promise<void> {
-		let tasks = [this._engine.quitAsync()];
+		const tasks = [this._engine.quitAsync()];
 		if (this._engineSub) {
 			tasks.push(this._engineSub.quitAsync());
 			this._engineSub = null;
@@ -124,9 +117,9 @@ export class CacheProvider {
 	 * Removes a key from cache.
 	 */
 	public async delete(key: string): Promise<void> {
-		key = this.realKey(key);
-		this.deleteLocal(key);
-		await this.syncOff(key);
+		key = this._realKey(key);
+		this._deleteLocal(key);
+		await this._syncOff(key);
 		await this._engine.delAsync(key);
 	}
 
@@ -137,25 +130,25 @@ export class CacheProvider {
 	 * @param {boolean} parseType (Only takes effect when `forceRemote=true`) If true, try to parse value to nearest possible primitive data type.
 	 * 		If false, always return string. Default is `true`. Set to `false` to save some performance.
 	 */
-	public getPrimitive(key: string, forceRemote: boolean = false, parseType: boolean = true): Promise<PrimitiveResult> {
-		key = this.realKey(key);
-		if (this._cacheTypes[key] != null && this._cacheTypes[key] !== PRIMITIVE) { return Promise.resolve(null); }
+	public getPrimitive(key: string, forceRemote: boolean = false, parseType: boolean = true): Promise<Maybe<PrimitiveType>> {
+		key = this._realKey(key);
+		if (this._cacheTypes[key] != null && this._cacheTypes[key] !== PRIMITIVE) { return Promise.resolve(new Maybe); }
 
-		return (!(forceRemote && this.hasEngine) && this._localCache[key] !== undefined)
-			? Promise.resolve(this._localCache[key])
-			: this.fetchPrimitive(key, parseType);
+		return (!(forceRemote && this._hasEngine) && this._localCache[key] !== undefined)
+			? Promise.resolve(new Maybe(this._localCache[key]))
+			: this._fetchPrimitive(key, parseType);
 	}
 	/**
 	 * Retrieves an array of strings or numbers or booleans from cache.
 	 * @param {string} key The key to look up.
 	 * @param {boolean} forceRemote Skip local cache and fetch from remote server. Default is `false`.
 	 */
-	public async getArray(key: string, forceRemote: boolean = false): Promise<PrimitiveResult[]> {
-		key = this.realKey(key);
-		if (this._cacheTypes[key] != null && this._cacheTypes[key] !== ARRAY) { return Promise.resolve(null); }
-		let stringified: string = (!(forceRemote && this.hasEngine) && this._localCache[key] !== undefined)
-			? this._localCache[key]
-			: await this.fetchPrimitive(key, false);
+	public async getArray(key: string, forceRemote: boolean = false): Promise<Maybe<PrimitiveType[]>> {
+		key = this._realKey(key);
+		if (this._cacheTypes[key] != null && this._cacheTypes[key] !== ARRAY) { return Promise.resolve(new Maybe<any[]>()); }
+		const stringified: string = (!(forceRemote && this._hasEngine) && this._localCache[key] !== undefined)
+			? await Promise.resolve(this._localCache[key])
+			: await this._fetchPrimitive(key, false);
 
 		return JSON.parse(stringified);
 		
@@ -169,13 +162,13 @@ export class CacheProvider {
 	 * 		If false, always return an object with string properties. 
 	 * 		Default is `true`. Set to `false` to save some performance.
 	 */
-	public getObject(key: string, forceRemote: boolean = false, parseType: boolean = true): Promise<PrimitiveFlatJson> {
-		key = this.realKey(key);
-		if (this._cacheTypes[key] != null && this._cacheTypes[key] !== OBJECT) { return Promise.resolve(null); }
+	public getObject(key: string, forceRemote: boolean = false, parseType: boolean = true): Promise<Maybe<PrimitiveFlatJson>> {
+		key = this._realKey(key);
+		if (this._cacheTypes[key] != null && this._cacheTypes[key] !== OBJECT) { return Promise.resolve(new Maybe); }
 
-		return (!(forceRemote && this.hasEngine) && this._localCache[key] !== undefined)
+		return (!(forceRemote && this._hasEngine) && this._localCache[key] !== undefined)
 			? Promise.resolve(this._localCache[key])
-			: this.fetchObject(key, parseType);
+			: this._fetchObject(key, parseType);
 	}
 
 	/**
@@ -185,22 +178,23 @@ export class CacheProvider {
 	 * @param {number} duration Expiration time in seconds.
 	 * @param {CacheLevel} level Whether to save in local cache only, or remote only, or both.
 	 * 		If both, then local cache is kept in sync with remote value even when
-	 * 		this value is updated in remote service from another app process.
+	 * 		this value is updated in remote service by another app process.
 	 */
-	public async setPrimitive(key: string, value: PrimitiveArg, duration: number = 0, level?: CacheLevel): Promise<void> {
-		if (value == null) { return; }
+	public async setPrimitive(key: string, value: PrimitiveType, duration: number = 0, level?: CacheLevel): Promise<void> {
+		Guard.assertArgDefined('key', key);
+		Guard.assertArgDefined('value', value);
 
 		let multi: MultiAsync;
-		level = this.defaultLevel(level);
-		key = this.realKey(key);
+		level = this._defaultLevel(level);
+		key = this._realKey(key);
 		this._cacheTypes[key] = PRIMITIVE;
 
-		if (this.has(level, CacheLevel.LOCAL)) {
+		if (this._includeBit(level, CacheLevel.LOCAL)) {
 			this._localCache[key] = value;
-			this.setLocalExp(key, duration);
+			this._setLocalExp(key, duration);
 		}
 
-		if (this.hasEngine && this.has(level, CacheLevel.REMOTE)) {
+		if (this._hasEngine && this._includeBit(level, CacheLevel.REMOTE)) {
 			multi = this._engine.multi();
 			multi.del(key);
 			multi.set(key, <any>value);
@@ -211,26 +205,27 @@ export class CacheProvider {
 			await multi.execAsync();
 		}
 
-		if (this.hasEngine && this.has(level, CacheLevel.BOTH)) {
-			await this.syncOn(key);
+		if (this._hasEngine && this._includeBit(level, CacheLevel.BOTH)) {
+			await this._syncOn(key);
 		}
 	}
 
 	/**
 	 * Saves an array to cache.
 	 * @param {string} key The key for later look up.
-	 * @param {Primitive[]} arr Primitive array to save.
+	 * @param {PrimitiveType[] | PrimitiveFlatJson[] } arr Array of any type to save.
 	 * @param {number} duration Expiration time in seconds.
 	 * @param {CacheLevel} level Whether to save in local cache only, or remote only, or both.
 	 * 		If both, then local cache is kept in sync with remote value even when
-	 * 		this value is updated in remote service from another app process.
+	 * 		this value is updated in remote service by another app process.
 	 */
 	public async setArray(key: string, arr: any[], duration: number = 0, level?: CacheLevel): Promise<void> {
-		if (!arr) { return; }
+		Guard.assertArgDefined('key', key);
+		Guard.assertArgDefined('arr', arr);
 
 		let stringified = JSON.stringify(arr),
 			promise = this.setPrimitive(key, stringified, duration, level);
-		this._cacheTypes[this.realKey(key)] = ARRAY;
+		this._cacheTypes[this._realKey(key)] = ARRAY;
 		return promise;
 	}
 
@@ -241,20 +236,22 @@ export class CacheProvider {
 	 * @param {number} duration Expiration time in seconds.
 	 * @param {CacheLevel} level Whether to save in local cache only, or remote only, or both.
 	 * 		If both, then local cache is kept in sync with remote value even when
-	 * 		this value is updated in remote service from another app process.
+	 * 		this value is updated in remote service by another app process.
 	 */
 	public async setObject(key: string, value: PrimitiveFlatJson, duration?: number, level?: CacheLevel): Promise<void> {
+		Guard.assertArgDefined('key', key);
+		Guard.assertArgDefined('value', value);
 		let multi: MultiAsync;
-		level = this.defaultLevel(level);
-		key = this.realKey(key);
+		level = this._defaultLevel(level);
+		key = this._realKey(key);
 		this._cacheTypes[key] = OBJECT;
 
-		if (this.has(level, CacheLevel.LOCAL)) {
+		if (this._includeBit(level, CacheLevel.LOCAL)) {
 			this._localCache[key] = value;
-			this.setLocalExp(key, duration);
+			this._setLocalExp(key, duration);
 		}
 
-		if (this.hasEngine && this.has(level, CacheLevel.REMOTE)) {
+		if (this._hasEngine && this._includeBit(level, CacheLevel.REMOTE)) {
 			multi = this._engine.multi();
 			multi.del(key);
 			multi.hmset(key, <any>value);
@@ -264,14 +261,13 @@ export class CacheProvider {
 			await multi.execAsync();
 		}
 
-		if (this.hasEngine && this.has(level, CacheLevel.BOTH)) {
-			await this.syncOn(key);
+		if (this._hasEngine && this._includeBit(level, CacheLevel.BOTH)) {
+			await this._syncOn(key);
 		}
 	}
 
 
-
-	private connectSingle(): redis.RedisClient {
+	private _connectSingle(): redis.RedisClient {
 		let opts = this._options.single;
 		if (!opts) { return null; }
 
@@ -281,42 +277,42 @@ export class CacheProvider {
 		});
 	}
 
-	private defaultLevel(level: CacheLevel): CacheLevel {
+	private _defaultLevel(level: CacheLevel): CacheLevel {
 		return (level)
 			? level
-			: (this.hasEngine) ? CacheLevel.REMOTE : CacheLevel.LOCAL;
+			: (this._hasEngine) ? CacheLevel.REMOTE : CacheLevel.LOCAL;
 	}
 
-	private deleteLocal(key: string) {
+	private _deleteLocal(key: string) {
 		delete this._localCache[key];
 		delete this._cacheTypes[key];
 		clearTimeout(this._cacheExps[key]);
 		delete this._cacheExps[key];
 	}
 
-	private extractKey(channel: string): string {
+	private _extractKey(channel: string): string {
 		let result = this._keyRegrex.exec(channel);
 		return result[1];
 	}
 
-	private async fetchObject(key: string, parseType: boolean): Promise<any> {
+	private async _fetchObject(key: string, parseType: boolean): Promise<any> {
 		let data = await this._engine.hgetallAsync(key);
-		return (this._cacheTypes[key] != ARRAY && parseType) ? this.parseObjectType(data) : data;
+		return (this._cacheTypes[key] != ARRAY && parseType) ? this._parseObjectType(data) : data;
 	}
 
-	private async fetchPrimitive(key: string, parseType: boolean = true): Promise<any> {
+	private async _fetchPrimitive(key: string, parseType: boolean = true): Promise<any> {
 		let data = await this._engine.getAsync(key);
-		return (this._cacheTypes[key] != ARRAY && parseType) ? this.parsePrimitiveType(data) : data;
+		return (this._cacheTypes[key] != ARRAY && parseType) ? this._parsePrimitiveType(data) : data;
 	}
 
-	private createLockChain(): CacheLockChain {
+	private _createLockChain(): CacheLockChain {
 		return [];
 	}
 
 	/**
 	 * Removes the last lock from lock queue then returns it.
 	 */
-	private popLock(key: string): Promise<void> {
+	private _popLock(key: string): Promise<void> {
 		let lockChain: CacheLockChain = this._cacheLocks[key],
 			lock = lockChain.pop();
 		if (!lockChain.length) {
@@ -328,30 +324,30 @@ export class CacheProvider {
 	/**
 	 * Gets the first lock in queue.
 	 */
-	private peekLock(key: string): Promise<void> {
+	private _peekLock(key: string): Promise<void> {
 		return (this._cacheLocks[key]) ? this._cacheLocks[key][0] : null;
 	}
 
 	/**
 	 * Adds a new lock at the beginning of lock queue.
 	 */
-	private pushLock(key: string): void {
+	private _pushLock(key: string): void {
 		let lockChain: CacheLockChain = this._cacheLocks[key],
 			releaseFn,
 			lock = new Promise<void>(resolve => releaseFn = resolve);
 		lock['release'] = releaseFn;
 
 		if (!lockChain) {
-			lockChain = this._cacheLocks[key] = this.createLockChain();
+			lockChain = this._cacheLocks[key] = this._createLockChain();
 		}
 		lockChain.unshift(lock);
 	}
 
-	private lockKey(key: string): Promise<void> {
-		let lock = this.peekLock(key);
+	private _lockKey(key: string): Promise<void> {
+		let lock = this._peekLock(key);
 
 		// Put my lock here
-		this.pushLock(key);
+		this._pushLock(key);
 
 		// If I'm the first one, I don't need to wait.
 		if (!lock) {
@@ -362,18 +358,18 @@ export class CacheProvider {
 		return lock;
 	}
 
-	private releaseKey(key: string): void {
-		let lock = this.popLock(key);
+	private _releaseKey(key: string): void {
+		let lock = this._popLock(key);
 		lock && lock['release']();
 	}
 
-	private async syncOn(key: string): Promise<void> {
+	private async _syncOn(key: string): Promise<void> {
 		let sub = this._engineSub;
 
 		if (!sub) { 
 			this._keyRegrex = new RegExp(`${EVENT_PREFIX}(.*)`);
 			if (!this._options.cluster) {
-				sub = this._engineSub = this.connectSingle();
+				sub = this._engineSub = this._connectSingle();
 			} else {
 				// Redis-clusr can handle bi-directional commands.
 				sub = this._engineSub = this._engine;
@@ -382,24 +378,24 @@ export class CacheProvider {
 			// TODO: This config should be in Redis conf
 			await this._engine.config('SET', 'notify-keyspace-events', 'KEA');
 			sub.on('message', async (channel, action) => {
-				let affectedKey = this.extractKey(channel);
+				let affectedKey = this._extractKey(channel);
 
-				await this.lockKey(key);
+				await this._lockKey(key);
 
 				switch (action) {
 					case 'set':
 						// this._localCache[affectedKey] = await this.getPrimitive(affectedKey, true);
-						this._localCache[affectedKey] = await this.fetchPrimitive(affectedKey, true);
+						this._localCache[affectedKey] = await this._fetchPrimitive(affectedKey, true);
 						break;
 					case 'hset':
 						// this._localCache[affectedKey] = await this.getObject(affectedKey, true);
-						this._localCache[affectedKey] = await this.fetchObject(affectedKey, true);
+						this._localCache[affectedKey] = await this._fetchObject(affectedKey, true);
 						break;
 					case 'del':
-						this.deleteLocal(affectedKey);
+						this._deleteLocal(affectedKey);
 						break;
 				}
-				this.releaseKey(key);
+				this._releaseKey(key);
 			});
 		}
 
@@ -407,17 +403,17 @@ export class CacheProvider {
 		await sub.subscribeAsync(`${EVENT_PREFIX}${key}`);
 	}
 
-	private async syncOff(key: string): Promise<void> {
+	private async _syncOff(key: string): Promise<void> {
 		let sub = this._engineSub;
 		if (!sub) { return; }
 		await sub.unsubscribeAsync(`${EVENT_PREFIX}${key}`);
 	}
 
-	private has(source: CacheLevel, target: CacheLevel): boolean {
+	private _includeBit(source: CacheLevel, target: CacheLevel): boolean {
 		return ((source & target) == target);
 	}
 
-	private parsePrimitiveType(val: string): any {
+	private _parsePrimitiveType(val: string): any {
 		try {
 			// Try parsing to number or boolean
 			return JSON.parse(val);
@@ -426,30 +422,30 @@ export class CacheProvider {
 		}
 	}
 
-	private parseObjectType(obj: {[x: string]: string}): any {
+	private _parseObjectType(obj: {[x: string]: string}): any {
 		for (let p in obj) {
 			/* istanbul ignore else */
 			if (obj.hasOwnProperty(p)) {
-				obj[p] = this.parsePrimitiveType(obj[p]);
+				obj[p] = this._parsePrimitiveType(obj[p]);
 			}
 		}
 		return obj;
 	}
 
-	private promisify(prototype: any): void {
+	private _promisify(prototype: any): void {
 		for (let fn of ['del', 'hmset', 'hgetall', 'get', 'set', 'config', 'quit', 'subscribe', 'unsubscribe']) {
 			prototype[`${fn}Async`] = (<any>Promise).promisify(prototype[fn]);
 		}
 		prototype['__promisified'] = true;
 	}
 
-	private setLocalExp(key: string, duration: number): void {
+	private _setLocalExp(key: string, duration: number): void {
 		if (duration > 0) {
-			this._cacheExps[key] = setTimeout(() => this.deleteLocal(key), duration * 1000);
+			this._cacheExps[key] = setTimeout(() => this._deleteLocal(key), duration * 1000);
 		}
 	}
 
-	private realKey(key: string): string {
+	private _realKey(key: string): string {
 		return `${this._options.name}::${key}`;
 	}
 }

@@ -1,18 +1,20 @@
-import { SvcSettingKeys as Svc } from 'back-lib-common-constants';
-import { IConfigurationProvider, CacheSettings, Types as ConT } from 'back-lib-common-contracts';
-import { injectable, inject, Guard, IDependencyContainer, Types as CmT } from 'back-lib-common-util';
+import { injectable, inject, Guard, IDependencyContainer, Types as CmT, Maybe,
+	IConfigurationProvider, CacheConnectionDetail, CriticalException,
+	constants } from '@micro-fleet/common';
 
 import { CacheProvider, CacheProviderConstructorOpts } from './CacheProvider';
 import { Types as T } from './Types';
 
+const { SvcSettingKeys: S, CacheSettingKeys: C } = constants;
 
 @injectable()
 export class CacheAddOn implements IServiceAddOn {
+	public readonly name: string = 'CacheAddOn';
 	
 	private _cacheProvider: CacheProvider;
 
 	constructor(
-		@inject(ConT.CONFIG_PROVIDER) private _configProvider: IConfigurationProvider,
+		@inject(CmT.CONFIG_PROVIDER) private _configProvider: IConfigurationProvider,
 		@inject(CmT.DEPENDENCY_CONTAINER) private _depContainer: IDependencyContainer,
 	) {
 		Guard.assertArgDefined('_configProvider', _configProvider);
@@ -23,17 +25,22 @@ export class CacheAddOn implements IServiceAddOn {
 	 * @see IServiceAddOn.init
 	 */
 	public init(): Promise<void> {
-		let conns = CacheSettings.fromProvider(this._configProvider);
-		if (!conns || !conns.length) { return Promise.resolve(); }
-
-		let opts: CacheProviderConstructorOpts = {
-				name: this._configProvider.get(Svc.SERVICE_SLUG)
+		const svcSlug = this._configProvider.get(S.SERVICE_SLUG);
+		if (!svcSlug.hasValue) {
+			return Promise.reject(new CriticalException('SERVICE_SLUG_REQUIRED'));
+		}
+		const opts: CacheProviderConstructorOpts = {
+				name: svcSlug.value as string
 			};
 
-		if (conns.length == 1) {
-			opts.single = conns[0];
-		} else {
-			opts.cluster = conns;
+		const result = this._buildConnDetails();
+		if (result.hasValue) {
+			const connDetails = result.value;
+			if (connDetails.length == 1) {
+				opts.single = connDetails[0];
+			} else {
+				opts.cluster = connDetails;
+			}
 		}
 
 		this._cacheProvider = new CacheProvider(opts);
@@ -53,5 +60,24 @@ export class CacheAddOn implements IServiceAddOn {
 	 */
 	public dispose(): Promise<void> {
 		return (this._cacheProvider) ? this._cacheProvider.dispose() : Promise.resolve();
+	}
+
+	private _buildConnDetails(): Maybe<CacheConnectionDetail[]> {
+		let provider = this._configProvider,
+			nConn = provider.get(C.CACHE_NUM_CONN) as Maybe<number>,
+			details: CacheConnectionDetail[] = [];
+
+		if (!nConn.hasValue) { return new Maybe; }
+		for (let i = 0; i < nConn.value; ++i) {
+			const host = provider.get(C.CACHE_HOST + i) as Maybe<string>;
+			const port = provider.get(C.CACHE_PORT + i) as Maybe<number>;
+
+			if (!host.hasValue || !port.hasValue) { continue; }
+			details.push({
+				host: host.value,
+				port: port.value
+			});
+		}
+		return details.length ? new Maybe(details) : new Maybe;
 	}
 }

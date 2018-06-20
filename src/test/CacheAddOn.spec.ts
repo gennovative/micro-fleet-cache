@@ -1,22 +1,19 @@
 import * as chai from 'chai';
 import * as spies from 'chai-spies';
-import * as redis from 'redis';
-import * as RedisClustr from 'redis-clustr';
-
-import { DependencyContainer } from 'back-lib-common-util';
-import { CacheSettingKeys as S } from 'back-lib-common-constants';
-import { IConfigurationProvider } from 'back-lib-common-contracts';
+import { DependencyContainer, IConfigurationProvider, Maybe,
+	constants } from '@micro-fleet/common';
 
 import { CacheAddOn, CacheProvider, Types as T } from '../app';
 
 
 chai.use(spies);
 const expect = chai.expect;
-
+const { CacheSettingKeys: C, SvcSettingKeys: SvS } = constants;
 
 class MockConfigAddOn implements IConfigurationProvider {
+	public readonly name: string = 'MockConfigAddOn';
 
-	constructor(private _mode) {
+	constructor(private _mode: string) {
 		
 	}
 
@@ -24,17 +21,18 @@ class MockConfigAddOn implements IConfigurationProvider {
 		return true;
 	}
 
-	public get(key: string): number & boolean & string {
-		if (!this._mode) { return null; }
+	public get(key: string): Maybe<number | boolean | string> {
+		if (!this._mode) { return new Maybe; }
 
 		switch (key) {
-			case S.CACHE_NUM_CONN: return <any>(this._mode == 'single' ? '1' : '2');
-			case S.CACHE_HOST + '0': return <any>'localhost';
-			case S.CACHE_PORT + '0': return <any>'6379';
-			case S.CACHE_HOST + '1': return <any>'firstidea.vn';
-			case S.CACHE_PORT + '1': return <any>'6380';
+			case C.CACHE_NUM_CONN: return new Maybe(this._mode == 'single' ? 1 : 2);
+			case C.CACHE_HOST + '0': return new Maybe('localhost');
+			case C.CACHE_PORT + '0': return new Maybe('6379');
+			case C.CACHE_HOST + '1': return new Maybe('firstidea.vn');
+			case C.CACHE_PORT + '1': return new Maybe('6380');
+			case SvS.SERVICE_SLUG: return new Maybe('TestCacheSvc');
 		}
-		return <any>'';
+		return new Maybe;
 	}
 
 	public deadLetter(): Promise<void> {
@@ -60,7 +58,8 @@ class MockConfigAddOn implements IConfigurationProvider {
 
 let depContainer: DependencyContainer;
 
-describe('CacheAddOn', () => {
+describe('CacheAddOn', function () {
+	// this.timeout(60000);
 
 	beforeEach(() => {
 		depContainer = new DependencyContainer();
@@ -72,15 +71,16 @@ describe('CacheAddOn', () => {
 
 
 	describe('init', () => {
-		it('should do nothing if no server is provided', async () => {
+		it('should use local cache only if no server is provided', async () => {
 			// Arrange
-			let cacheAddOn = new CacheAddOn(new MockConfigAddOn(null), depContainer);
+			const cacheAddOn = new CacheAddOn(new MockConfigAddOn(null), depContainer);
 
 			// Act
 			await cacheAddOn.init();
 
 			// Assert
-			expect(cacheAddOn['_cacheProvider']).not.to.exist;
+			expect(cacheAddOn['_cacheProvider']).to.exist;
+			expect(cacheAddOn['_cacheProvider']['_engine']).not.to.exist;
 
 			// Clean up
 			await cacheAddOn.dispose();

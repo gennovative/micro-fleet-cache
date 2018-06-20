@@ -1,12 +1,6 @@
 /// <reference path="./global.d.ts" />
-
-declare module 'back-lib-cache-provider/dist/app/CacheProvider' {
-	import { ICacheConnectionDetail } from 'back-lib-common-contracts';
-	export type PrimitiveArg = string | number | boolean;
-	export type PrimitiveResult = string & number & boolean;
-	export type PrimitiveFlatJson = {
-	    [x: string]: PrimitiveArg;
-	};
+declare module '@micro-fleet/cache/dist/app/CacheProvider' {
+	import { CacheConnectionDetail, Maybe } from '@micro-fleet/common';
 	export enum CacheLevel {
 	    /**
 	     * Only caches in local memory.
@@ -19,7 +13,7 @@ declare module 'back-lib-cache-provider/dist/app/CacheProvider' {
 	    /**
 	     * Caches in remote service and keeps sync with local memory.
 	     */
-	    BOTH = 3,
+	    BOTH = 3
 	}
 	export type CacheProviderConstructorOpts = {
 	    /**
@@ -29,12 +23,12 @@ declare module 'back-lib-cache-provider/dist/app/CacheProvider' {
 	    /**
 	     * Credentials to connect to a single cache service.
 	     */
-	    single?: ICacheConnectionDetail;
+	    single?: CacheConnectionDetail;
 	    /**
 	     * Credentials to connect to a cluster of cache services.
 	     * This option overrides `single`.
 	     */
-	    cluster?: ICacheConnectionDetail[];
+	    cluster?: CacheConnectionDetail[];
 	};
 	/**
 	 * Provides methods to read and write data to cache.
@@ -62,13 +56,13 @@ declare module 'back-lib-cache-provider/dist/app/CacheProvider' {
 	     * @param {boolean} parseType (Only takes effect when `forceRemote=true`) If true, try to parse value to nearest possible primitive data type.
 	     * 		If false, always return string. Default is `true`. Set to `false` to save some performance.
 	     */
-	    getPrimitive(key: string, forceRemote?: boolean, parseType?: boolean): Promise<PrimitiveResult>;
+	    getPrimitive(key: string, forceRemote?: boolean, parseType?: boolean): Promise<Maybe<PrimitiveType>>;
 	    /**
 	     * Retrieves an array of strings or numbers or booleans from cache.
 	     * @param {string} key The key to look up.
 	     * @param {boolean} forceRemote Skip local cache and fetch from remote server. Default is `false`.
 	     */
-	    getArray(key: string, forceRemote?: boolean): Promise<PrimitiveResult[]>;
+	    getArray(key: string, forceRemote?: boolean): Promise<Maybe<PrimitiveType[]>>;
 	    /**
 	     * Retrieves an object from cache.
 	     * @param {string} key The key to look up.
@@ -77,7 +71,7 @@ declare module 'back-lib-cache-provider/dist/app/CacheProvider' {
 	     * 		If false, always return an object with string properties.
 	     * 		Default is `true`. Set to `false` to save some performance.
 	     */
-	    getObject(key: string, forceRemote?: boolean, parseType?: boolean): Promise<PrimitiveFlatJson>;
+	    getObject(key: string, forceRemote?: boolean, parseType?: boolean): Promise<Maybe<PrimitiveFlatJson>>;
 	    /**
 	     * Saves a string or number or boolean to cache.
 	     * @param {string} key The key for later look up.
@@ -85,17 +79,17 @@ declare module 'back-lib-cache-provider/dist/app/CacheProvider' {
 	     * @param {number} duration Expiration time in seconds.
 	     * @param {CacheLevel} level Whether to save in local cache only, or remote only, or both.
 	     * 		If both, then local cache is kept in sync with remote value even when
-	     * 		this value is updated in remote service from another app process.
+	     * 		this value is updated in remote service by another app process.
 	     */
-	    setPrimitive(key: string, value: PrimitiveArg, duration?: number, level?: CacheLevel): Promise<void>;
+	    setPrimitive(key: string, value: PrimitiveType, duration?: number, level?: CacheLevel): Promise<void>;
 	    /**
 	     * Saves an array to cache.
 	     * @param {string} key The key for later look up.
-	     * @param {Primitive[]} arr Primitive array to save.
+	     * @param {PrimitiveType[] | PrimitiveFlatJson[] } arr Array of any type to save.
 	     * @param {number} duration Expiration time in seconds.
 	     * @param {CacheLevel} level Whether to save in local cache only, or remote only, or both.
 	     * 		If both, then local cache is kept in sync with remote value even when
-	     * 		this value is updated in remote service from another app process.
+	     * 		this value is updated in remote service by another app process.
 	     */
 	    setArray(key: string, arr: any[], duration?: number, level?: CacheLevel): Promise<void>;
 	    /**
@@ -105,7 +99,7 @@ declare module 'back-lib-cache-provider/dist/app/CacheProvider' {
 	     * @param {number} duration Expiration time in seconds.
 	     * @param {CacheLevel} level Whether to save in local cache only, or remote only, or both.
 	     * 		If both, then local cache is kept in sync with remote value even when
-	     * 		this value is updated in remote service from another app process.
+	     * 		this value is updated in remote service by another app process.
 	     */
 	    setObject(key: string, value: PrimitiveFlatJson, duration?: number, level?: CacheLevel): Promise<void>;
 	    	    	    	    	    	    	    	    /**
@@ -120,18 +114,18 @@ declare module 'back-lib-cache-provider/dist/app/CacheProvider' {
 	    	    	    	    	    	    	    	    	    	    	    	}
 
 }
-declare module 'back-lib-cache-provider/dist/app/Types' {
+declare module '@micro-fleet/cache/dist/app/Types' {
 	export class Types {
 	    static readonly CACHE_PROVIDER: string;
 	    static readonly CACHE_ADDON: string;
 	}
 
 }
-declare module 'back-lib-cache-provider/dist/app/CacheAddOn' {
-	import { IConfigurationProvider } from 'back-lib-common-contracts';
-	import { IDependencyContainer } from 'back-lib-common-util';
+declare module '@micro-fleet/cache/dist/app/CacheAddOn' {
+	import { IDependencyContainer, IConfigurationProvider } from '@micro-fleet/common';
 	export class CacheAddOn implements IServiceAddOn {
-	    	    	    	    constructor(_configProvider: IConfigurationProvider, _depContainer: IDependencyContainer);
+	    	    	    readonly name: string;
+	    	    constructor(_configProvider: IConfigurationProvider, _depContainer: IDependencyContainer);
 	    /**
 	     * @see IServiceAddOn.init
 	     */
@@ -144,13 +138,12 @@ declare module 'back-lib-cache-provider/dist/app/CacheAddOn' {
 	     * @see IServiceAddOn.dispose
 	     */
 	    dispose(): Promise<void>;
-	}
+	    	}
 
 }
-declare module 'back-lib-cache-provider' {
-	import 'back-lib-common-util/dist/app/bluebirdify';
-	export * from 'back-lib-cache-provider/dist/app/CacheAddOn';
-	export * from 'back-lib-cache-provider/dist/app/CacheProvider';
-	export * from 'back-lib-cache-provider/dist/app/Types';
+declare module '@micro-fleet/cache' {
+	export * from '@micro-fleet/cache/dist/app/CacheAddOn';
+	export * from '@micro-fleet/cache/dist/app/CacheProvider';
+	export * from '@micro-fleet/cache/dist/app/Types';
 
 }
