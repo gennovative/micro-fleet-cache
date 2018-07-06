@@ -1,31 +1,24 @@
-# Gennova backend common web library
+# Micro Fleet - Backend Cache library
 
-Contains classes used by web and rest services.
+Belongs to Micro Fleet framework, provides utility class to read and write from/to local or remote cache service, as well as keep sync between them.
 
 See more examples and usage guide in unit test.
 
 ## INSTALLATION
 
-`npm i`: To install dependencies.
-`gulp` to transpile TypeScript.
+- Stable version: `npm i @micro-fleet/cache`
+- Edge (development) version: `npm i git@github.com:gennovative/micro-fleet-cache.git`
 
 ## DEVELOPMENT
 
-`gulp watch`: To transpile and watch for edit.
+- Install packages in `peerDependencies` section with command `npm i --no-save {package name}@{version}`
+- `npm run build` to transpile TypeScript then run unit tests (if any) (equiv. `npm run compile` + `npm run test` (if any)).
+- `npm run compile`: To transpile TypeScript into JavaScript.
+- `npm run watch`: To transpile without running unit tests, then watch for changes in *.ts files and re-transpile on save.
+- `npm run test`: To run unit tests.
+  * After tests finish, open file `/coverage/index.html` with a web browser to see the code coverage report which is mapped to TypeScript code.
 
 ## RELEASE
 
-`gulp release`: To transpile and create `app.d.ts` definition file.
-
----
-## VERSIONS
-
-### 1.1.0
-  - Added **CacheAddOn**.
-
-### 1.0.0
-* **CacheProvider** can:
-  - Only works with single cache server (cluster coming soon).
-  - Read/write primitive values (string, number, boolean).
-  - Read/write flat objects (no nested properties).
-  - Read/write arrays of arbitrary types and structures (including nested objects).
+- `npm run release`: To transpile and create `app.d.ts` definition file.
+- **Note:** Please commit transpiled code in folder `dist` and definition file `app.d.ts` relevant to the TypeScript version.
