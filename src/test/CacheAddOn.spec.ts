@@ -22,7 +22,12 @@ class MockConfigAddOn implements IConfigurationProvider {
 	}
 
 	public get(key: string): Maybe<number | boolean | string> {
-		if (!this._mode) { return new Maybe; }
+		if (!this._mode) { 
+			switch (key) {
+				case SvS.SERVICE_SLUG: return new Maybe('TestCacheSvc');
+				default: return new Maybe;
+			}
+		}
 
 		switch (key) {
 			case C.CACHE_NUM_CONN: return new Maybe(this._mode == 'single' ? 1 : 2);

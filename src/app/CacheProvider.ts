@@ -104,7 +104,10 @@ export class CacheProvider {
 	 * Clears all local cache and disconnects from remote cache service.
 	 */
 	public async dispose(): Promise<void> {
-		const tasks = [this._engine.quitAsync()];
+		const tasks = [];
+		if (this._engine) {
+			tasks.push(this._engine.quitAsync());
+		}
 		if (this._engineSub) {
 			tasks.push(this._engineSub.quitAsync());
 			this._engineSub = null;
@@ -132,11 +135,23 @@ export class CacheProvider {
 	 */
 	public getPrimitive(key: string, forceRemote: boolean = false, parseType: boolean = true): Promise<Maybe<PrimitiveType>> {
 		key = this._realKey(key);
-		if (this._cacheTypes[key] != null && this._cacheTypes[key] !== PRIMITIVE) { return Promise.resolve(new Maybe); }
+		const cacheType: CacheLevel = this._cacheTypes[key];
+		if (cacheType != null && cacheType !== PRIMITIVE) { 
+			return Promise.resolve(new Maybe);
+		}
 
-		return (!(forceRemote && this._hasEngine) && this._localCache[key] !== undefined)
-			? Promise.resolve(new Maybe(this._localCache[key]))
-			: this._fetchPrimitive(key, parseType);
+		if (forceRemote && this._hasEngine) {
+			return this._fetchPrimitive(key, parseType);
+		}
+
+		if (this._localCache.hasOwnProperty(key)) {
+			return Promise.resolve(new Maybe<any>(this._localCache[key]));
+		}
+
+		if (this._includeBit(cacheType, CacheLevel.REMOTE)) {
+			return this._fetchPrimitive(key, parseType);
+		}
+		return Promise.resolve(new Maybe);
 	}
 	/**
 	 * Retrieves an array of strings or numbers or booleans from cache.
@@ -144,14 +159,40 @@ export class CacheProvider {
 	 * @param {boolean} forceRemote Skip local cache and fetch from remote server. Default is `false`.
 	 */
 	public async getArray(key: string, forceRemote: boolean = false): Promise<Maybe<PrimitiveType[]>> {
-		key = this._realKey(key);
-		if (this._cacheTypes[key] != null && this._cacheTypes[key] !== ARRAY) { return Promise.resolve(new Maybe<any[]>()); }
-		const stringified: string = (!(forceRemote && this._hasEngine) && this._localCache[key] !== undefined)
-			? await Promise.resolve(this._localCache[key])
-			: await this._fetchPrimitive(key, false);
+		// key = this._realKey(key);
+		// if (this._cacheTypes[key] != null && this._cacheTypes[key] !== ARRAY) { return Promise.resolve(new Maybe<any[]>()); }
+		// const stringified: string = (!(forceRemote && this._hasEngine) && this._localCache[key] !== undefined)
+		// 	? await Promise.resolve(this._localCache[key])
+		// 	: await this._fetchPrimitive(key, false);
 
-		return JSON.parse(stringified);
-		
+		// return JSON.parse(stringified);
+		key = this._realKey(key);
+		const cacheType: CacheLevel = this._cacheTypes[key];
+		const emtpyMaybe = new Maybe<any[]>();
+		let stringified: string;
+
+		if (cacheType != null && cacheType !== ARRAY) {
+			return Promise.resolve(emtpyMaybe);
+		}
+
+		if (forceRemote && this._hasEngine) {
+			stringified = (await this._fetchPrimitive(key, false)).TryGetValue(null);
+		}
+
+		if ( (typeof stringified !== 'string') && this._localCache.hasOwnProperty(key)) {
+			stringified = this._localCache[key] as string;
+		}
+
+		if ( (typeof stringified !== 'string') && this._includeBit(cacheType, CacheLevel.REMOTE)) {
+			stringified = (await this._fetchPrimitive(key, false)).TryGetValue(null);
+		}
+
+		if ((typeof stringified === 'string')) {
+			return Promise.resolve(
+				new Maybe(JSON.parse(stringified))
+			);
+		}
+		return Promise.resolve(emtpyMaybe);
 	}
 
 	/**
@@ -163,12 +204,30 @@ export class CacheProvider {
 	 * 		Default is `true`. Set to `false` to save some performance.
 	 */
 	public getObject(key: string, forceRemote: boolean = false, parseType: boolean = true): Promise<Maybe<PrimitiveFlatJson>> {
-		key = this._realKey(key);
-		if (this._cacheTypes[key] != null && this._cacheTypes[key] !== OBJECT) { return Promise.resolve(new Maybe); }
+		// key = this._realKey(key);
+		// if (this._cacheTypes[key] != null && this._cacheTypes[key] !== OBJECT) { return Promise.resolve(new Maybe); }
 
-		return (!(forceRemote && this._hasEngine) && this._localCache[key] !== undefined)
-			? Promise.resolve(this._localCache[key])
-			: this._fetchObject(key, parseType);
+		// return (!(forceRemote && this._hasEngine) && this._localCache[key] !== undefined)
+		// 	? Promise.resolve(this._localCache[key])
+		// 	: this._fetchObject(key, parseType);
+		key = this._realKey(key);
+		const cacheType: CacheLevel = this._cacheTypes[key];
+		if (cacheType != null && cacheType !== OBJECT) { 
+			return Promise.resolve(new Maybe);
+		}
+
+		if (forceRemote && this._hasEngine) {
+			return this._fetchObject(key, parseType);
+		}
+
+		if (this._localCache.hasOwnProperty(key)) {
+			return Promise.resolve(new Maybe<any>(this._localCache[key]));
+		}
+
+		if (this._includeBit(cacheType, CacheLevel.REMOTE)) {
+			return this._fetchObject(key, parseType);
+		}
+		return Promise.resolve(new Maybe);
 	}
 
 	/**
@@ -219,12 +278,12 @@ export class CacheProvider {
 	 * 		If both, then local cache is kept in sync with remote value even when
 	 * 		this value is updated in remote service by another app process.
 	 */
-	public async setArray(key: string, arr: any[], duration: number = 0, level?: CacheLevel): Promise<void> {
+	public setArray(key: string, arr: any[], duration: number = 0, level?: CacheLevel): Promise<void> {
 		Guard.assertArgDefined('key', key);
 		Guard.assertArgDefined('arr', arr);
 
-		let stringified = JSON.stringify(arr),
-			promise = this.setPrimitive(key, stringified, duration, level);
+		const stringified = JSON.stringify(arr);
+		const promise = this.setPrimitive(key, stringified, duration, level);
 		this._cacheTypes[this._realKey(key)] = ARRAY;
 		return promise;
 	}
@@ -295,14 +354,16 @@ export class CacheProvider {
 		return result[1];
 	}
 
-	private async _fetchObject(key: string, parseType: boolean): Promise<any> {
-		let data = await this._engine.hgetallAsync(key);
-		return (this._cacheTypes[key] != ARRAY && parseType) ? this._parseObjectType(data) : data;
+	private async _fetchObject(key: string, parseType: boolean): Promise<Maybe<any>> {
+		const response = await this._engine.hgetallAsync(key);
+		const data = (this._cacheTypes[key] != ARRAY && parseType) ? this._parseObjectType(response) : response;
+		return (data == null) ? new Maybe : new Maybe(data);
 	}
 
-	private async _fetchPrimitive(key: string, parseType: boolean = true): Promise<any> {
-		let data = await this._engine.getAsync(key);
-		return (this._cacheTypes[key] != ARRAY && parseType) ? this._parsePrimitiveType(data) : data;
+	private async _fetchPrimitive(key: string, parseType: boolean = true): Promise<Maybe<any>> {
+		const response = await this._engine.getAsync(key);
+		const data = (this._cacheTypes[key] != ARRAY && parseType) ? this._parsePrimitiveType(response) : response;
+		return (data == null) ? new Maybe : new Maybe(data);
 	}
 
 	private _createLockChain(): CacheLockChain {
@@ -378,18 +439,23 @@ export class CacheProvider {
 			// TODO: This config should be in Redis conf
 			await this._engine.config('SET', 'notify-keyspace-events', 'KEA');
 			sub.on('message', async (channel, action) => {
-				let affectedKey = this._extractKey(channel);
+				const affectedKey = this._extractKey(channel);
+				let fromRemote: Maybe<any>;
 
 				await this._lockKey(key);
 
 				switch (action) {
 					case 'set':
-						// this._localCache[affectedKey] = await this.getPrimitive(affectedKey, true);
-						this._localCache[affectedKey] = await this._fetchPrimitive(affectedKey, true);
+						fromRemote = await this._fetchPrimitive(affectedKey, true);
+						if (fromRemote.hasValue) {
+							this._localCache[affectedKey] = fromRemote.value;
+						}
 						break;
 					case 'hset':
-						// this._localCache[affectedKey] = await this.getObject(affectedKey, true);
-						this._localCache[affectedKey] = await this._fetchObject(affectedKey, true);
+						fromRemote = await this._fetchObject(affectedKey, true);
+						if (fromRemote.hasValue) {
+							this._localCache[affectedKey] = fromRemote.value;
+						}
 						break;
 					case 'del':
 						this._deleteLocal(affectedKey);
