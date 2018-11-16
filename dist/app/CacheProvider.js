@@ -1,8 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const util = require("util");
 const redis = require("redis");
 const RedisClustr = require("redis-clustr");
-redis.Multi.prototype.execAsync = Promise.promisify(redis.Multi.prototype.exec);
+redis.Multi.prototype.execAsync = util.promisify(redis.Multi.prototype.exec);
 const common_1 = require("@micro-fleet/common");
 const EVENT_PREFIX = '__keyspace@0__:', PRIMITIVE = 0, OBJECT = 1, ARRAY = 2;
 var CacheLevel;
@@ -241,7 +242,7 @@ class CacheProvider {
         }
     }
     _connectSingle() {
-        let opts = this._options.single;
+        const opts = this._options.single;
         if (!opts) {
             return null;
         }
@@ -262,7 +263,7 @@ class CacheProvider {
         delete this._cacheExps[key];
     }
     _extractKey(channel) {
-        let result = this._keyRegrex.exec(channel);
+        const result = this._keyRegrex.exec(channel);
         return result[1];
     }
     async _fetchObject(key, parseType) {
@@ -282,7 +283,7 @@ class CacheProvider {
      * Removes the last lock from lock queue then returns it.
      */
     _popLock(key) {
-        let lockChain = this._cacheLocks[key], lock = lockChain.pop();
+        const lockChain = this._cacheLocks[key], lock = lockChain.pop();
         if (!lockChain.length) {
             delete this._cacheLocks[key];
         }
@@ -298,7 +299,11 @@ class CacheProvider {
      * Adds a new lock at the beginning of lock queue.
      */
     _pushLock(key) {
-        let lockChain = this._cacheLocks[key], releaseFn, lock = new Promise(resolve => releaseFn = resolve);
+        let lockChain = this._cacheLocks[key];
+        let releaseFn;
+        // Note: The callback inside Promise constructor
+        //		is invoked SYNCHRONOUSLY
+        const lock = new Promise(resolve => releaseFn = resolve);
         lock['release'] = releaseFn;
         if (!lockChain) {
             lockChain = this._cacheLocks[key] = this._createLockChain();
@@ -306,7 +311,7 @@ class CacheProvider {
         lockChain.unshift(lock);
     }
     _lockKey(key) {
-        let lock = this._peekLock(key);
+        const lock = this._peekLock(key);
         // Put my lock here
         this._pushLock(key);
         // If I'm the first one, I don't need to wait.
@@ -317,7 +322,7 @@ class CacheProvider {
         return lock;
     }
     _releaseKey(key) {
-        let lock = this._popLock(key);
+        const lock = this._popLock(key);
         lock && lock['release']();
     }
     async _syncOn(key) {
@@ -361,7 +366,7 @@ class CacheProvider {
         await sub.subscribeAsync(`${EVENT_PREFIX}${key}`);
     }
     async _syncOff(key) {
-        let sub = this._engineSub;
+        const sub = this._engineSub;
         if (!sub) {
             return;
         }
@@ -390,7 +395,7 @@ class CacheProvider {
     }
     _promisify(prototype) {
         for (let fn of ['del', 'hmset', 'hgetall', 'get', 'set', 'config', 'quit', 'subscribe', 'unsubscribe']) {
-            prototype[`${fn}Async`] = Promise.promisify(prototype[fn]);
+            prototype[`${fn}Async`] = util.promisify(prototype[fn]);
         }
         prototype['__promisified'] = true;
     }

@@ -1,6 +1,7 @@
+import * as util from 'util';
 import * as redis from 'redis';
 import * as RedisClustr from 'redis-clustr';
-redis.Multi.prototype.execAsync = (<any>Promise).promisify(redis.Multi.prototype.exec);
+redis.Multi.prototype.execAsync = util.promisify(redis.Multi.prototype.exec);
 
 import { CacheConnectionDetail, Maybe, Guard } from '@micro-fleet/common';
 
@@ -327,7 +328,7 @@ export class CacheProvider {
 
 
 	private _connectSingle(): redis.RedisClient {
-		let opts = this._options.single;
+		const opts = this._options.single;
 		if (!opts) { return null; }
 
 		return redis.createClient({
@@ -350,7 +351,7 @@ export class CacheProvider {
 	}
 
 	private _extractKey(channel: string): string {
-		let result = this._keyRegrex.exec(channel);
+		const result = this._keyRegrex.exec(channel);
 		return result[1];
 	}
 
@@ -374,7 +375,7 @@ export class CacheProvider {
 	 * Removes the last lock from lock queue then returns it.
 	 */
 	private _popLock(key: string): Promise<void> {
-		let lockChain: CacheLockChain = this._cacheLocks[key],
+		const lockChain: CacheLockChain = this._cacheLocks[key],
 			lock = lockChain.pop();
 		if (!lockChain.length) {
 			delete this._cacheLocks[key];
@@ -393,9 +394,12 @@ export class CacheProvider {
 	 * Adds a new lock at the beginning of lock queue.
 	 */
 	private _pushLock(key: string): void {
-		let lockChain: CacheLockChain = this._cacheLocks[key],
-			releaseFn,
-			lock = new Promise<void>(resolve => releaseFn = resolve);
+		let lockChain: CacheLockChain = this._cacheLocks[key];
+		let releaseFn;
+
+		// Note: The callback inside Promise constructor
+		//		is invoked SYNCHRONOUSLY
+		const lock = new Promise<void>(resolve => releaseFn = resolve);
 		lock['release'] = releaseFn;
 
 		if (!lockChain) {
@@ -405,7 +409,7 @@ export class CacheProvider {
 	}
 
 	private _lockKey(key: string): Promise<void> {
-		let lock = this._peekLock(key);
+		const lock = this._peekLock(key);
 
 		// Put my lock here
 		this._pushLock(key);
@@ -420,7 +424,7 @@ export class CacheProvider {
 	}
 
 	private _releaseKey(key: string): void {
-		let lock = this._popLock(key);
+		const lock = this._popLock(key);
 		lock && lock['release']();
 	}
 
@@ -470,7 +474,7 @@ export class CacheProvider {
 	}
 
 	private async _syncOff(key: string): Promise<void> {
-		let sub = this._engineSub;
+		const sub = this._engineSub;
 		if (!sub) { return; }
 		await sub.unsubscribeAsync(`${EVENT_PREFIX}${key}`);
 	}
@@ -500,7 +504,7 @@ export class CacheProvider {
 
 	private _promisify(prototype: any): void {
 		for (let fn of ['del', 'hmset', 'hgetall', 'get', 'set', 'config', 'quit', 'subscribe', 'unsubscribe']) {
-			prototype[`${fn}Async`] = (<any>Promise).promisify(prototype[fn]);
+			prototype[`${fn}Async`] = util.promisify(prototype[fn]);
 		}
 		prototype['__promisified'] = true;
 	}

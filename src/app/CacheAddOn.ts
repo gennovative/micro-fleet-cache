@@ -7,6 +7,7 @@ import { Types as T } from './Types';
 
 const { SvcSettingKeys: S, CacheSettingKeys: C } = constants;
 
+
 @injectable()
 export class CacheAddOn implements IServiceAddOn {
 	public readonly name: string = 'CacheAddOn';
@@ -63,7 +64,7 @@ export class CacheAddOn implements IServiceAddOn {
 	}
 
 	private _buildConnDetails(): Maybe<CacheConnectionDetail[]> {
-		let provider = this._configProvider,
+		const provider = this._configProvider,
 			nConn = provider.get(C.CACHE_NUM_CONN) as Maybe<number>,
 			details: CacheConnectionDetail[] = [];
 

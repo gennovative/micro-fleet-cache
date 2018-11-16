@@ -1,7 +1,13 @@
+.nyc_output
 .vscode
-gulpfile.js
-tsconfig.json
-tslint.json
-src
+coverage
 dist/test
 dist/**/*.map
+src
+.editorconfig
+.gitignore
+.git
+CHANGELOG.md
+tsconfig.json
+tslint.json
+**/*.log

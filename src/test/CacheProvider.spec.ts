@@ -5,8 +5,7 @@ import { Maybe, InvalidArgumentException } from '@micro-fleet/common';
 import { CacheProvider, CacheLevel } from '../app';
 
 
-const 
-	FIRST_CACHE = 'firstcache',
+const FIRST_CACHE = 'firstcache',
 	LOCAL_CACHE = 'localcache',
 	KEY = 'TESTKEY';
 
@@ -51,11 +50,11 @@ describe('CacheProvider (single)', function () {
 
 		it('Should save a value locally only', async () => {
 			// Arrange
-			let valueOne = 'saved locally',
-				valueTwo = 'saved remotely',
-				client = redis.createClient({
-					host: 'localhost'
-				});
+			const valueOne = 'saved locally',
+				valueTwo = 'saved remotely';
+			const client = redis.createClient({
+				host: 'localhost'
+			});
 
 			// Act
 			await client['setAsync'](`${FIRST_CACHE}::${KEY}`, valueTwo);
@@ -75,11 +74,11 @@ describe('CacheProvider (single)', function () {
 
 		it('Should default to save a value locally only if no cache service is provided', async () => {
 			// Arrange
-			let cache = new CacheProvider({
+			const cache = new CacheProvider({
 					name: LOCAL_CACHE,
 					/* No remote service */
-				}),
-				value = 'saved locally';
+				});
+			const value = 'saved locally';
 
 			// Act
 			await cache.setPrimitive(KEY, value);
@@ -91,7 +90,7 @@ describe('CacheProvider (single)', function () {
 
 		it('Should save a value remote only', async () => {
 			// Arrange
-			let value = 'saved remotely';
+			const value = 'saved remotely';
 
 			// Act
 			await cache.setPrimitive(KEY, value, null, CacheLevel.REMOTE);
@@ -109,7 +108,7 @@ describe('CacheProvider (single)', function () {
 
 		it('Should save a value both remotely and locally', async () => {
 			// Arrange
-			let value = 'I am everywhere';
+			const value = 'I am everywhere';
 
 			// Act
 			await cache.setPrimitive(KEY, value, null, CacheLevel.BOTH);
@@ -145,7 +144,7 @@ describe('CacheProvider (single)', function () {
 
 		it('Should save a value then expire remotely', (done) => {
 			// Arrange
-			let value = 'a local string',
+			const value = 'a local string',
 				SECONDS = 1;
 
 			// Act
@@ -166,7 +165,7 @@ describe('CacheProvider (single)', function () {
 
 		it('Should save a value then expire both locally and remotely', (done) => {
 			// Arrange
-			let value = 'a local string',
+			const value = 'a local string',
 				SECONDS = 1;
 
 			// Act
@@ -214,8 +213,8 @@ describe('CacheProvider (single)', function () {
 				.then(() => {
 					setTimeout(async () => {
 						// Assert
-						let refetchOne = cache['_localCache'][`${FIRST_CACHE}::${KEY}`],
-							refetchTwo = cache['_localCache'][`${FIRST_CACHE}::${KEY_TWO}`];
+						const refetchOne = cache['_localCache'][`${FIRST_CACHE}::${KEY}`];
+						const refetchTwo = cache['_localCache'][`${FIRST_CACHE}::${KEY_TWO}`];
 						expect(refetchOne).to.equal(valueOneNew);
 						expect(refetchTwo).to.equal(valueTwoNew);
 						done();

@@ -93,13 +93,13 @@ describe('CacheAddOn', function () {
 
 		it('should connect to single server', async () => {
 			// Arrange
-			let cacheAddOn = new CacheAddOn(new MockConfigAddOn('single'), depContainer);
+			const cacheAddOn = new CacheAddOn(new MockConfigAddOn('single'), depContainer);
 
 			// Act
 			await cacheAddOn.init();
 
 			// Assert
-			let cacheProvider = depContainer.resolve<CacheProvider>(T.CACHE_PROVIDER);
+			const cacheProvider = depContainer.resolve<CacheProvider>(T.CACHE_PROVIDER);
 			expect(cacheProvider['_options'].single).to.exist;
 			expect(cacheProvider['_options'].single.host).to.equal('localhost');
 			expect(cacheProvider['_options'].single.port).to.equal('6379');
@@ -111,13 +111,13 @@ describe('CacheAddOn', function () {
 		
 		// it('should connect to cluster of servers', async () => {
 		// 	// Arrange
-		// 	let cacheAddOn = new CacheAddOn(new MockConfigAddOn('cluster'), depContainer);
+		// 	const cacheAddOn = new CacheAddOn(new MockConfigAddOn('cluster'), depContainer);
 
 		// 	// Act
 		// 	await cacheAddOn.init();
 
 		// 	// Assert
-		// 	let cacheProvider = depContainer.resolve<CacheProvider>(T.CACHE_PROVIDER);
+		// 	const cacheProvider = depContainer.resolve<CacheProvider>(T.CACHE_PROVIDER);
 		// 	expect(cacheProvider['_options'].cluster).to.exist;
 		// 	expect(cacheProvider['_options'].cluster.length).to.be.equal(2);
 		// 	expect(cacheProvider['_options'].single).not.to.exist;
@@ -131,10 +131,10 @@ describe('CacheAddOn', function () {
 	describe('dispose', () => {
 		it('should call cacheProvider.dispose', async () => {
 			// Arrange
-			let cacheAddOn = new CacheAddOn(new MockConfigAddOn('single'), depContainer);
+			const cacheAddOn = new CacheAddOn(new MockConfigAddOn('single'), depContainer);
 			
 			await cacheAddOn.init();
-			let disconnectSpy = chai.spy.on(cacheAddOn['_cacheProvider'], 'dispose');
+			const disconnectSpy = chai.spy.on(cacheAddOn['_cacheProvider'], 'dispose');
 
 			// Act
 			await cacheAddOn.dispose();
@@ -149,7 +149,7 @@ describe('CacheAddOn', function () {
 	describe('deadLetter', () => {
 		it('should resolve (for now)', async () => {
 			// Arrange
-			let cacheAddOn = new CacheAddOn(new MockConfigAddOn('single'), depContainer);
+			const cacheAddOn = new CacheAddOn(new MockConfigAddOn('single'), depContainer);
 
 			// Act
 			await cacheAddOn.deadLetter();

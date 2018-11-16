@@ -1,5 +1,10 @@
 ## VERSIONS
 
+### 1.1.3
+- Fixed node engine version in package.json.
+- Refactor to replace `let` with `const`.
+- Replace `Bluebird's Promise.promisify` with native `util.promisify`.
+
 ### 1.1.0
   - Added **CacheAddOn**.
 

@@ -62,7 +62,7 @@ let CacheAddOn = class CacheAddOn {
         return (this._cacheProvider) ? this._cacheProvider.dispose() : Promise.resolve();
     }
     _buildConnDetails() {
-        let provider = this._configProvider, nConn = provider.get(C.CACHE_NUM_CONN), details = [];
+        const provider = this._configProvider, nConn = provider.get(C.CACHE_NUM_CONN), details = [];
         if (!nConn.hasValue) {
             return new common_1.Maybe;
         }
