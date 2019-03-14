@@ -5,17 +5,35 @@
 	"scripts": {
 		"build": "npm run compile && npm run test",
 		"clean": "rimraf dist coverage .nyc_output",
-		"definition": "node ../../scripts/definition.js",
+		"definition": "node ../../../scripts/definition.js",
 		"dedup": "rimraf node_modules/**/node_modules/**/typings",
 		"compile": "npm run clean && npm run tslint && tsc --pretty",
 		"release": "npm run build && npm run definition",
 		"test": "nyc --reporter=json --reporter=html --include dist/app/**/*.js mocha --recursive dist/test",
 		"tslint": "tslint -c tslint.json 'src/**/*.ts'",
-		"prepublish": "npm run release",
+		"prepublishOnly": "npm run release",
 		"watch": "npm run clean && npm run tslint && tsc --watch --pretty"
 	},
 	"dependencies": {
 		"redis-clustr": "~1.5"
+	},
+	"devDependencies": {
+		"@types/redis": "~2.8",
+		"@types/body-parser": "~1.17",
+		"@types/chai": "~4.1",
+		"@types/chai-spies": "~0.0.1",
+		"@types/mocha": "~5.2",
+		"@types/winston": "~2.3",
+		"@types/node": "~8.10",
+		"joi": "~13.0",
+		"chai": "~4.1",
+		"chai-spies": "git://github.com/chaijs/chai-spies.git#b11aeebf",
+		"mocha": "~5.2",
+		"nyc": "~12.0",
+		"rimraf": "~2.6",
+		"ts-declarator": "~1.0",
+		"tslint": "~5.10",
+		"typescript": "~2.9"
 	},
 	"peerDependencies": {
 		"@micro-fleet/common": "~1.2",
@@ -35,8 +53,5 @@
 	"private": false,
 	"main": "./dist/app/index.js",
 	"types": "./typings/app.d.ts",
-	"repository": "git@github.com:gennovative/micro-fleet-cache.git",
-	"devDependencies": {
-		"@types/redis": "^2.8.6"
-	}
+	"repository": "git@github.com:gennovative/micro-fleet-cache.git"
 }
