@@ -1,57 +1,56 @@
 {
-	"name": "@micro-fleet/cache",
-	"version": "1.1.3",
-	"description": "Contains utility to manage cache.",
-	"scripts": {
-		"build": "npm run compile && npm run test",
-		"clean": "rimraf dist coverage .nyc_output",
-		"definition": "node ../../../scripts/definition.js",
-		"dedup": "rimraf node_modules/**/node_modules/**/typings",
-		"compile": "npm run clean && npm run tslint && tsc --pretty",
-		"release": "npm run build && npm run definition",
-		"test": "nyc --reporter=json --reporter=html --include dist/app/**/*.js mocha --recursive dist/test",
-		"tslint": "tslint -c tslint.json 'src/**/*.ts'",
-		"prepublishOnly": "npm run release",
-		"watch": "npm run clean && npm run tslint && tsc --watch --pretty"
-	},
-	"dependencies": {
-		"redis-clustr": "~1.5"
-	},
-	"devDependencies": {
-		"@types/redis": "~2.8",
-		"@types/body-parser": "~1.17",
-		"@types/chai": "~4.1",
-		"@types/chai-spies": "~0.0.1",
-		"@types/mocha": "~5.2",
-		"@types/winston": "~2.3",
-		"@types/node": "~8.10",
-		"joi": "~13.0",
-		"chai": "~4.1",
-		"chai-spies": "git://github.com/chaijs/chai-spies.git#b11aeebf",
-		"mocha": "~5.2",
-		"nyc": "~12.0",
-		"rimraf": "~2.6",
-		"ts-declarator": "~1.0",
-		"tslint": "~5.10",
-		"typescript": "~2.9"
-	},
-	"peerDependencies": {
-		"@micro-fleet/common": "~1.2",
-		"@micro-fleet/service-communication": "~0.2"
-	},
-	"publishConfig": {
-		"access": "public"
-	},
-	"author": {
-		"name": "gennovative",
-		"url": "https://github.com/gennovative"
-	},
-	"engines": {
-		"node": ">=8.0.0"
-	},
-	"license": "MIT",
-	"private": false,
-	"main": "./dist/app/index.js",
-	"types": "./typings/app.d.ts",
-	"repository": "git@github.com:gennovative/micro-fleet-cache.git"
+    "name": "@micro-fleet/cache",
+    "version": "1.1.4",
+    "description": "Contains utility to manage cache.",
+    "scripts": {
+        "build": "npm run compile && npm run test",
+        "clean": "rimraf dist coverage .nyc_output",
+        "definition": "node ../../../scripts/definition.js",
+        "dedup": "rimraf node_modules/**/node_modules/**/typings",
+        "compile": "npm run clean && npm run lint && tsc --pretty",
+        "release": "npm run build && npm run definition",
+        "test": "nyc --reporter=json --reporter=html --include dist/app/**/*.js mocha --recursive dist/test",
+        "lint": "tslint --fix 'src/**/*.ts'",
+        "watch": "npm run clean && npm run lint && tsc --watch --pretty",
+        "linkPackages": "node ../../../scripts/linkPackages.js",
+        "postinstall": "npm run linkPackages",
+        "prepublishOnly": "npm run release"
+    },
+    "dependencies": {
+        "redis-clustr": "~1.7"
+    },
+    "devDependencies": {
+        "@types/redis": "~2.8",
+        "@types/chai": "~4.1",
+        "@types/chai-spies": "~0.0.1",
+        "@types/mocha": "~5.2",
+        "@types/node": "~10.14",
+        "chai": "~4.1",
+        "chai-spies": "git://github.com/chaijs/chai-spies.git#b11aeebf",
+        "mocha": "~5.2",
+        "nyc": "~13.3",
+        "rimraf": "~2.6",
+        "ts-declarator": "~1.0",
+        "tslint": "~5.11",
+        "typescript": "~3.3"
+    },
+    "peerDependencies": {
+        "@micro-fleet/common": "~1.3",
+        "@micro-fleet/service-communication": "~0.2"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "author": {
+        "name": "gennovative",
+        "url": "https://github.com/gennovative"
+    },
+    "engines": {
+        "node": ">=10.4.0"
+    },
+    "license": "MIT",
+    "private": false,
+    "main": "./dist/app/index.js",
+    "types": "./typings/app.d.ts",
+    "repository": "git@github.com:gennovative/micro-fleet-cache.git"
 }

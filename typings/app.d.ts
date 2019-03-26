@@ -53,8 +53,9 @@ declare module '@micro-fleet/cache/dist/app/CacheProvider' {
 	     * Retrieves a string or number or boolean from cache.
 	     * @param {string} key The key to look up.
 	     * @param {boolean} forceRemote Skip local cache and fetch from remote server. Default is `false`.
-	     * @param {boolean} parseType (Only takes effect when `forceRemote=true`) If true, try to parse value to nearest possible primitive data type.
-	     * 		If false, always return string. Default is `true`. Set to `false` to save some performance.
+	     * @param {boolean} parseType (Only takes effect when `forceRemote=true`)
+	     *      If true, try to parse value to nearest possible primitive data type.
+	     *      If false, always return string. Default is `true`. Set to `false` to save some performance.
 	     */
 	    getPrimitive(key: string, forceRemote?: boolean, parseType?: boolean): Promise<Maybe<PrimitiveType>>;
 	    /**
@@ -67,9 +68,10 @@ declare module '@micro-fleet/cache/dist/app/CacheProvider' {
 	     * Retrieves an object from cache.
 	     * @param {string} key The key to look up.
 	     * @param {boolean} forceRemote Skip local cache and fetch from remote server. Default is `false`.
-	     * @param {boolean} parseType (Only takes effect when `forceRemote=true`) If true, try to parse every property value to nearest possible primitive data type.
-	     * 		If false, always return an object with string properties.
-	     * 		Default is `true`. Set to `false` to save some performance.
+	     * @param {boolean} parseType (Only takes effect when `forceRemote=true`)
+	     *      If true, try to parse every property value to nearest possible primitive data type.
+	     *      If false, always return an object with string properties.
+	     *      Default is `true`. Set to `false` to save some performance.
 	     */
 	    getObject(key: string, forceRemote?: boolean, parseType?: boolean): Promise<Maybe<PrimitiveFlatJson>>;
 	    /**
@@ -78,8 +80,8 @@ declare module '@micro-fleet/cache/dist/app/CacheProvider' {
 	     * @param {Primitive} value Primitive value to save.
 	     * @param {number} duration Expiration time in seconds.
 	     * @param {CacheLevel} level Whether to save in local cache only, or remote only, or both.
-	     * 		If both, then local cache is kept in sync with remote value even when
-	     * 		this value is updated in remote service by another app process.
+	     *         If both, then local cache is kept in sync with remote value even when
+	     *         this value is updated in remote service by another app process.
 	     */
 	    setPrimitive(key: string, value: PrimitiveType, duration?: number, level?: CacheLevel): Promise<void>;
 	    /**
@@ -88,8 +90,8 @@ declare module '@micro-fleet/cache/dist/app/CacheProvider' {
 	     * @param {PrimitiveType[] | PrimitiveFlatJson[] } arr Array of any type to save.
 	     * @param {number} duration Expiration time in seconds.
 	     * @param {CacheLevel} level Whether to save in local cache only, or remote only, or both.
-	     * 		If both, then local cache is kept in sync with remote value even when
-	     * 		this value is updated in remote service by another app process.
+	     *         If both, then local cache is kept in sync with remote value even when
+	     *         this value is updated in remote service by another app process.
 	     */
 	    setArray(key: string, arr: any[], duration?: number, level?: CacheLevel): Promise<void>;
 	    /**
@@ -98,8 +100,8 @@ declare module '@micro-fleet/cache/dist/app/CacheProvider' {
 	     * @param {PrimitiveFlatJson} value Object value to save.
 	     * @param {number} duration Expiration time in seconds.
 	     * @param {CacheLevel} level Whether to save in local cache only, or remote only, or both.
-	     * 		If both, then local cache is kept in sync with remote value even when
-	     * 		this value is updated in remote service by another app process.
+	     *         If both, then local cache is kept in sync with remote value even when
+	     *         this value is updated in remote service by another app process.
 	     */
 	    setObject(key: string, value: PrimitiveFlatJson, duration?: number, level?: CacheLevel): Promise<void>;
 	    	    	    	    	    	    	    	    /**
@@ -116,8 +118,8 @@ declare module '@micro-fleet/cache/dist/app/CacheProvider' {
 }
 declare module '@micro-fleet/cache/dist/app/Types' {
 	export class Types {
-	    static readonly CACHE_PROVIDER: string;
-	    static readonly CACHE_ADDON: string;
+	    static readonly CACHE_PROVIDER = "cache-provider.CacheProvider";
+	    static readonly CACHE_ADDON = "cache-provider.CacheAddOn";
 	}
 
 }

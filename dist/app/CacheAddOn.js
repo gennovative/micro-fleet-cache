@@ -33,7 +33,7 @@ let CacheAddOn = class CacheAddOn {
             return Promise.reject(new common_1.CriticalException('SERVICE_SLUG_REQUIRED'));
         }
         const opts = {
-            name: svcSlug.value
+            name: svcSlug.value,
         };
         const result = this._buildConnDetails();
         if (result.hasValue) {
@@ -74,7 +74,7 @@ let CacheAddOn = class CacheAddOn {
             }
             details.push({
                 host: host.value,
-                port: port.value
+                port: port.value,
             });
         }
         return details.length ? new common_1.Maybe(details) : new common_1.Maybe;

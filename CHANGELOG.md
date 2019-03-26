@@ -1,5 +1,9 @@
 ## VERSIONS
 
+### 1.1.4
+- Upgraded dependencies.
+- Improved lint rules.
+
 ### 1.1.3
 - Fixed node engine version in package.json.
 - Refactor to replace `let` with `const`.

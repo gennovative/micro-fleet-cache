@@ -1,3 +1,3 @@
-export * from './CacheAddOn';
-export * from './CacheProvider';
-export * from './Types';
+export * from './CacheAddOn'
+export * from './CacheProvider'
+export * from './Types'
