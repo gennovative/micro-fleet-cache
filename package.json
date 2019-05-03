@@ -1,6 +1,6 @@
 {
     "name": "@micro-fleet/cache",
-    "version": "1.1.4",
+    "version": "1.1.5",
     "description": "Contains utility to manage cache.",
     "scripts": {
         "build": "npm run compile && npm run test",
@@ -13,7 +13,6 @@
         "lint": "tslint --fix 'src/**/*.ts'",
         "watch": "npm run clean && npm run lint && tsc --watch --pretty",
         "linkPackages": "node ../../../scripts/linkPackages.js",
-        "postinstall": "npm run linkPackages",
         "prepublishOnly": "npm run release"
     },
     "dependencies": {

@@ -1,5 +1,8 @@
 ## VERSIONS
 
+### 1.1.5
+- Removed script "postinstall" from `package.json`.
+
 ### 1.1.4
 - Upgraded dependencies.
 - Improved lint rules.
