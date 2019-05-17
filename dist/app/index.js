@@ -6,4 +6,5 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __export(require("./CacheAddOn"));
 __export(require("./CacheProvider"));
 __export(require("./Types"));
+__export(require("./register-addon"));
 //# sourceMappingURL=index.js.map

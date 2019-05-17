@@ -1,6 +1,6 @@
 {
     "name": "@micro-fleet/cache",
-    "version": "1.1.5",
+    "version": "1.1.6",
     "description": "Contains utility to manage cache.",
     "scripts": {
         "build": "npm run compile && npm run test",

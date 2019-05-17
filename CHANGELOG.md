@@ -1,5 +1,8 @@
 ## VERSIONS
 
+### 1.1.6
+- Added `registerCacheAddOn`
+
 ### 1.1.5
 - Removed script "postinstall" from `package.json`.
 

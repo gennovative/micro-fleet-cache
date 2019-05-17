@@ -118,8 +118,8 @@ declare module '@micro-fleet/cache/dist/app/CacheProvider' {
 }
 declare module '@micro-fleet/cache/dist/app/Types' {
 	export class Types {
-	    static readonly CACHE_PROVIDER = "cache-provider.CacheProvider";
-	    static readonly CACHE_ADDON = "cache-provider.CacheAddOn";
+	    static readonly CACHE_PROVIDER = "cache.CacheProvider";
+	    static readonly CACHE_ADDON = "cache.CacheAddOn";
 	}
 
 }
@@ -143,9 +143,15 @@ declare module '@micro-fleet/cache/dist/app/CacheAddOn' {
 	    	}
 
 }
+declare module '@micro-fleet/cache/dist/app/register-addon' {
+	import { CacheAddOn } from '@micro-fleet/cache/dist/app/CacheAddOn';
+	export function registerCacheAddOn(): CacheAddOn;
+
+}
 declare module '@micro-fleet/cache' {
 	export * from '@micro-fleet/cache/dist/app/CacheAddOn';
 	export * from '@micro-fleet/cache/dist/app/CacheProvider';
 	export * from '@micro-fleet/cache/dist/app/Types';
+	export * from '@micro-fleet/cache/dist/app/register-addon';
 
 }
