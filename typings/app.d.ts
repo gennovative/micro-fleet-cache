@@ -30,14 +30,49 @@ declare module '@micro-fleet/cache/dist/app/CacheProvider' {
 	     */
 	    cluster?: CacheConnectionDetail[];
 	};
+	export type CacheSetOptions = {
+	    /**
+	     * Expiration time in seconds. Default is to never expire.
+	     */
+	    duration?: number;
+	    /**
+	     * Whether to save in local cache only, or remote only, or both.
+	     * If both, then local cache is kept in sync with remote value even when
+	     * this value is updated in remote service by another app process.
+	     */
+	    level?: CacheLevel;
+	    /**
+	     * If true, the key is not prepended with service slug, and is accessible
+	     * by other CacheProvider instances from other services.
+	     * Default is `false`.
+	     */
+	    isGlobal?: boolean;
+	};
+	export type CacheGetOptions = {
+	    /**
+	     * Skip local cache and fetch from remote server.
+	     * Default is `false`.
+	     */
+	    forceRemote?: boolean;
+	    /**
+	     * (Only takes effect when `forceRemote=true`)
+	     * If true, try to parse value to nearest possible primitive data type.
+	     * If false, always return string. Default is `true`. Set to `false` to save some performance.
+	     * Default is `true`.
+	     */
+	    parseType?: boolean;
+	    /**
+	     * If true, the key is not prepended with service slug, so we can
+	     * get value set by other CacheProvider instances in other services.
+	     * Default is `false`.
+	     */
+	    isGlobal?: boolean;
+	};
 	/**
 	 * Provides methods to read and write data to cache.
 	 */
 	export class CacheProvider {
 	    	    	    	    	    	    	    /**
-	     * Stores cache type (primitive, object) of each key.
-	     */
-	    	    /**
 	     * Stores setTimeout token of each key.
 	     */
 	    	    constructor(_options: CacheProviderConstructorOpts);
@@ -48,62 +83,41 @@ declare module '@micro-fleet/cache/dist/app/CacheProvider' {
 	    /**
 	     * Removes a key from cache.
 	     */
-	    delete(key: string): Promise<void>;
+	    delete(key: string, isGlobal?: boolean): Promise<void>;
 	    /**
 	     * Retrieves a string or number or boolean from cache.
 	     * @param {string} key The key to look up.
-	     * @param {boolean} forceRemote Skip local cache and fetch from remote server. Default is `false`.
-	     * @param {boolean} parseType (Only takes effect when `forceRemote=true`)
-	     *      If true, try to parse value to nearest possible primitive data type.
-	     *      If false, always return string. Default is `true`. Set to `false` to save some performance.
 	     */
-	    getPrimitive(key: string, forceRemote?: boolean, parseType?: boolean): Promise<Maybe<PrimitiveType>>;
+	    getPrimitive(key: string, opts?: CacheGetOptions): Promise<Maybe<PrimitiveType>>;
 	    /**
 	     * Retrieves an array of strings or numbers or booleans from cache.
 	     * @param {string} key The key to look up.
 	     * @param {boolean} forceRemote Skip local cache and fetch from remote server. Default is `false`.
 	     */
-	    getArray(key: string, forceRemote?: boolean): Promise<Maybe<PrimitiveType[]>>;
+	    getArray(key: string, opts?: CacheGetOptions): Promise<Maybe<PrimitiveType[]>>;
 	    /**
 	     * Retrieves an object from cache.
 	     * @param {string} key The key to look up.
-	     * @param {boolean} forceRemote Skip local cache and fetch from remote server. Default is `false`.
-	     * @param {boolean} parseType (Only takes effect when `forceRemote=true`)
-	     *      If true, try to parse every property value to nearest possible primitive data type.
-	     *      If false, always return an object with string properties.
-	     *      Default is `true`. Set to `false` to save some performance.
 	     */
-	    getObject(key: string, forceRemote?: boolean, parseType?: boolean): Promise<Maybe<PrimitiveFlatJson>>;
+	    getObject(key: string, opts?: CacheGetOptions): Promise<Maybe<PrimitiveFlatJson>>;
 	    /**
 	     * Saves a string or number or boolean to cache.
 	     * @param {string} key The key for later look up.
 	     * @param {Primitive} value Primitive value to save.
-	     * @param {number} duration Expiration time in seconds.
-	     * @param {CacheLevel} level Whether to save in local cache only, or remote only, or both.
-	     *         If both, then local cache is kept in sync with remote value even when
-	     *         this value is updated in remote service by another app process.
 	     */
-	    setPrimitive(key: string, value: PrimitiveType, duration?: number, level?: CacheLevel): Promise<void>;
+	    setPrimitive(key: string, value: PrimitiveType, opts?: CacheSetOptions): Promise<void>;
 	    /**
 	     * Saves an array to cache.
 	     * @param {string} key The key for later look up.
 	     * @param {PrimitiveType[] | PrimitiveFlatJson[] } arr Array of any type to save.
-	     * @param {number} duration Expiration time in seconds.
-	     * @param {CacheLevel} level Whether to save in local cache only, or remote only, or both.
-	     *         If both, then local cache is kept in sync with remote value even when
-	     *         this value is updated in remote service by another app process.
 	     */
-	    setArray(key: string, arr: any[], duration?: number, level?: CacheLevel): Promise<void>;
+	    setArray(key: string, arr: any[], opts?: CacheSetOptions): Promise<void>;
 	    /**
 	     * Saves an object to cache.
 	     * @param {string} key The key for later look up.
 	     * @param {PrimitiveFlatJson} value Object value to save.
-	     * @param {number} duration Expiration time in seconds.
-	     * @param {CacheLevel} level Whether to save in local cache only, or remote only, or both.
-	     *         If both, then local cache is kept in sync with remote value even when
-	     *         this value is updated in remote service by another app process.
 	     */
-	    setObject(key: string, value: PrimitiveFlatJson, duration?: number, level?: CacheLevel): Promise<void>;
+	    setObject(key: string, value: PrimitiveFlatJson, opts?: CacheSetOptions): Promise<void>;
 	    	    	    	    	    	    	    	    /**
 	     * Removes the last lock from lock queue then returns it.
 	     */

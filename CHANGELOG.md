@@ -2,6 +2,7 @@
 
 ### 1.1.6
 - Added `registerCacheAddOn`
+- [#1](https://github.com/gennovative/micro-fleet-cache/issues/1) Always fails to fetch cached value after restarting application
 
 ### 1.1.5
 - Removed script "postinstall" from `package.json`.
