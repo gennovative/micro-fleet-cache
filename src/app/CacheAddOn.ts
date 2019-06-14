@@ -1,3 +1,7 @@
+/// <reference types="debug" />
+const debug: debug.IDebugger = require('debug')('mcft:cache:CacheAddOn')
+
+
 import { injectable, inject, Guard, IDependencyContainer, Types as CmT, Maybe,
     IConfigurationProvider, CacheConnectionDetail, CriticalException,
     constants } from '@micro-fleet/common'
@@ -5,8 +9,10 @@ import { injectable, inject, Guard, IDependencyContainer, Types as CmT, Maybe,
 import { CacheProvider, CacheProviderConstructorOpts } from './CacheProvider'
 import { Types as T } from './Types'
 
-const { SvcSettingKeys: S, CacheSettingKeys: C } = constants
 
+const { SvcSettingKeys: S, CacheSettingKeys: C } = constants
+const DEFAULT_HOST = 'localhost'
+const DEFAULT_PORT = 6379
 
 @injectable()
 export class CacheAddOn implements IServiceAddOn {
@@ -26,27 +32,34 @@ export class CacheAddOn implements IServiceAddOn {
      * @see IServiceAddOn.init
      */
     public init(): Promise<void> {
-        const svcSlug = this._configProvider.get(S.SERVICE_SLUG)
-        if (!svcSlug.hasValue) {
-            return Promise.reject(new CriticalException('SERVICE_SLUG_REQUIRED'))
-        }
-        const opts: CacheProviderConstructorOpts = {
-                name: svcSlug.value as string,
-            }
+        return (this._configProvider.get(S.SERVICE_SLUG) as Maybe<string>)
+            .chain(svcSlug => {
+                return this._buildConnDetails()
+                    .map<[string, CacheConnectionDetail[]]>(details => [svcSlug, details])
+                    .orElse(() => [svcSlug, null])
+            })
+            .map(([svcSlug, details]) => {
+                const opts: CacheProviderConstructorOpts = {
+                    name: svcSlug as string,
+                }
 
-        const result = this._buildConnDetails()
-        if (result.hasValue) {
-            const connDetails = result.value
-            if (connDetails.length == 1) {
-                opts.single = connDetails[0]
-            } else {
-                opts.cluster = connDetails
-            }
-        }
+                if (details && details.length > 1) {
+                    opts.cluster = details
+                }
+                else if (details) {
+                    opts.single = details[0]
+                }
 
-        this._cacheProvider = new CacheProvider(opts)
-        this._depContainer.bindConstant<CacheProvider>(T.CACHE_PROVIDER, this._cacheProvider)
-        return Promise.resolve()
+                return Promise.resolve(opts)
+            })
+            .orElse(
+                () => Promise.reject(new CriticalException('SERVICE_SLUG_REQUIRED'))
+            )
+            .value
+            .then((opts) => {
+                this._cacheProvider = new CacheProvider(opts)
+                this._depContainer.bindConstant<CacheProvider>(T.CACHE_PROVIDER, this._cacheProvider)
+            })
     }
 
     /**
@@ -64,21 +77,67 @@ export class CacheAddOn implements IServiceAddOn {
     }
 
     private _buildConnDetails(): Maybe<CacheConnectionDetail[]> {
-        const provider = this._configProvider,
-            nConn = provider.get(C.CACHE_NUM_CONN) as Maybe<number>,
-            details: CacheConnectionDetail[] = []
+        return (this._configProvider.get(C.CACHE_NUM_CONN) as Maybe<number>)
+            .chain((nConn) => {
+                const hosts: string[] = this._getHosts(nConn)
+                const ports: number[] = this._getPorts(nConn)
+                const details: CacheConnectionDetail[] = []
 
-        if (!nConn.hasValue) { return new Maybe }
-        for (let i = 0; i < nConn.value; ++i) {
-            const host = provider.get(C.CACHE_HOST + i) as Maybe<string>
-            const port = provider.get(C.CACHE_PORT + i) as Maybe<number>
+                for (let i = 0; i < nConn; ++i) {
+                    details.push({
+                        host: hosts[i],
+                        port: ports[i],
+                    })
+                }
 
-            if (!host.hasValue || !port.hasValue) { continue }
-            details.push({
-                host: host.value,
-                port: port.value,
+                if (details.length) {
+                    debug(`Cache with ${details.length} connections`)
+                    return Maybe.Just(details)
+                }
+                else {
+                    debug('No cache connection')
+                    return Maybe.Nothing()
+                }
             })
+    }
+
+    private _getHosts(nConn: number): string[] {
+        return this._configProvider.get(C.CACHE_HOST)
+            .map((value) => {
+                // If number of connection is greater than number of given host addresses,
+                // we use default address for the rest.
+                if (Array.isArray(value) && value.length != nConn) {
+                    return this._padArray(value, nConn, DEFAULT_HOST) as string[]
+                }
+                // If there is only one address as string, we use it for all connections
+                return this._padArray([], nConn, value) as string[]
+            })
+            .value
+    }
+
+    private _getPorts(nConn: number): number[] {
+        return this._configProvider.get(C.CACHE_PORT)
+            .map((value) => {
+                // If number of connection is greater than number of given ports,
+                // we use default port for the rest.
+                if (Array.isArray(value) && value.length != nConn) {
+                    return this._padArray(value, nConn, DEFAULT_PORT) as number[]
+                }
+                // If there is only one address as number, we use it for all connections
+                return this._padArray([], nConn, value) as number[]
+            })
+            .value
+    }
+
+    /**
+     * Keeps appending `value` to `arr` until the array reaches specified `newLength`.
+     * Returns a new array instance.
+     */
+    private _padArray(arr: any[], newLength: number, value: any): any[] {
+        const newArr = [...arr]
+        while (newArr.length < newLength) {
+            newArr.push(value)
         }
-        return details.length ? new Maybe(details) : new Maybe
+        return newArr
     }
 }

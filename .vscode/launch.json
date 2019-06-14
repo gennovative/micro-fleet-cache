@@ -12,7 +12,10 @@
             "args": [
                 "./dist/test/**/*.js"
             ],
-            // Automatically stop program after launch.
+            "env": {
+                "DEBUG": "mcft:cache:*",
+                "DEBUG_HIDE_DATE": "true"
+            },
             "stopOnEntry": false,
             "runtimeExecutable": null,
             "cwd": "${workspaceRoot}",

@@ -1,5 +1,8 @@
 ## VERSIONS
 
+### 1.1.7
+- Upgraded to new version of `@micro-fleet/common` with `Maybe`'s breaking change
+
 ### 1.1.6
 - Added `registerCacheAddOn`
 - [#1](https://github.com/gennovative/micro-fleet-cache/issues/1) Always fails to fetch cached value after restarting application

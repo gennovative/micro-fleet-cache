@@ -115,21 +115,23 @@ export class CacheProvider {
     private _cacheExps: { [x: string]: NodeJS.Timer }
 
 
-    constructor(private _options: CacheProviderConstructorOpts) {
+    constructor(private _options?: CacheProviderConstructorOpts) {
         this._localCache = {
             '@#!': null, // Activate hash mode (vs. V8's hidden class mode)
         }
         this._cacheExps = {}
         this._cacheLocks = {}
 
+        if (!_options) { return }
+
         if (_options.cluster) {
             this._promisify(RedisClustr.prototype)
             this._engine = new RedisClustr({
                 servers: _options.cluster,
             })
-        } else {
+        } else if (_options.single) {
             this._promisify(redis.RedisClient.prototype)
-            this._engine = this._connectSingle()
+            this._engine = this._connectSingle(_options.single)
         }
     }
 
@@ -177,13 +179,13 @@ export class CacheProvider {
             return this._fetchPrimitive(key, parseType)
         }
         else if (this._localCache.hasOwnProperty(key)) {
-            return Promise.resolve(new Maybe<any>(this._localCache[key]))
+            return Promise.resolve(Maybe.Just<any>(this._localCache[key]))
         }
         else if (this._hasEngine) {
             return this._fetchPrimitive(key, parseType)
         }
 
-        return Promise.resolve(new Maybe)
+        return Promise.resolve(Maybe.Nothing())
     }
     /**
      * Retrieves an array of strings or numbers or booleans from cache.
@@ -193,25 +195,21 @@ export class CacheProvider {
     public async getArray(key: string, opts: CacheGetOptions = {}): Promise<Maybe<PrimitiveType[]>> {
         Guard.assertArgDefined('key', key)
         key = opts.isGlobal ? key : this._realKey(key)
-        const emptyMaybe = new Maybe<any[]>()
-        let stringified: string
+        let stringified: Maybe<string>
 
         if (opts.forceRemote && this._hasEngine) {
-            stringified = (await this._fetchPrimitive(key, false)).TryGetValue(null)
+            stringified = (await this._fetchPrimitive(key, false))
         }
         else if (this._localCache.hasOwnProperty(key)) {
-            stringified = this._localCache[key] as string
+            stringified = Maybe.Just(this._localCache[key] as string)
         }
         else if (this._hasEngine) {
-            stringified = (await this._fetchPrimitive(key, false)).TryGetValue(null)
+            stringified = (await this._fetchPrimitive(key, false))
+        } else {
+            stringified = Maybe.Nothing()
         }
 
-        if ((typeof stringified === 'string')) {
-            return Promise.resolve(
-                new Maybe(JSON.parse(stringified))
-            )
-        }
-        return Promise.resolve(emptyMaybe)
+        return Promise.resolve(stringified.map(JSON.parse))
     }
 
     /**
@@ -227,7 +225,7 @@ export class CacheProvider {
             return this._fetchObject(key, parseType)
         }
         else if (this._localCache.hasOwnProperty(key)) {
-            return Promise.resolve(new Maybe<any>(this._localCache[key]))
+            return Promise.resolve(Maybe.Just<any>(this._localCache[key]))
         }
         return this._fetchObject(key, parseType)
     }
@@ -315,14 +313,8 @@ export class CacheProvider {
     }
 
 
-    private _connectSingle(): redis.RedisClient {
-        const opts = this._options.single
-        if (!opts) { return null }
-
-        return redis.createClient({
-            host: opts.host,
-            port: opts.port,
-        })
+    private _connectSingle({ host, port }: CacheConnectionDetail): redis.RedisClient {
+        return redis.createClient({ host, port })
     }
 
     private _defaultLevel(level: CacheLevel): CacheLevel {
@@ -345,13 +337,13 @@ export class CacheProvider {
     private async _fetchObject(key: string, parseType: boolean): Promise<Maybe<any>> {
         const response = await this._engine.hgetallAsync(key)
         const data = (parseType ? this._parseObjectType(response) : response)
-        return (data == null) ? new Maybe : new Maybe(data)
+        return (data == null) ? Maybe.Nothing() : Maybe.Just(data)
     }
 
     private async _fetchPrimitive(key: string, parseType: boolean): Promise<Maybe<any>> {
         const response = await this._engine.getAsync(key)
         const data = (parseType ? this._parsePrimitiveType(response) : response)
-        return (data == null) ? new Maybe : new Maybe(data)
+        return (data == null) ? Maybe.Nothing() : Maybe.Just(data)
     }
 
     private _createLockChain(): CacheLockChain {
@@ -420,33 +412,28 @@ export class CacheProvider {
 
         if (!sub) {
             this._keyRegrex = new RegExp(`${EVENT_PREFIX}(.*)`)
-            if (!this._options.cluster) {
-                sub = this._engineSub = this._connectSingle()
-            } else {
+            if (this._options.cluster) {
                 // Redis-clusr can handle bi-directional commands.
                 sub = this._engineSub = this._engine
+            } else {
+                sub = this._engineSub = this._connectSingle(this._options.single)
             }
 
             // TODO: This config should be in Redis conf
             await this._engine.config('SET', 'notify-keyspace-events', 'KEA')
             sub.on('message', async (channel, action) => {
                 const affectedKey = this._extractKey(channel)
-                let fromRemote: Maybe<any>
 
                 await this._lockKey(key)
 
                 switch (action) {
                     case 'set':
-                        fromRemote = await this._fetchPrimitive(affectedKey, true)
-                        if (fromRemote.hasValue) {
-                            this._localCache[affectedKey] = fromRemote.value
-                        }
+                        (await this._fetchPrimitive(affectedKey, true))
+                            .map(val => this._localCache[affectedKey] = val)
                         break
                     case 'hset':
-                        fromRemote = await this._fetchObject(affectedKey, true)
-                        if (fromRemote.hasValue) {
-                            this._localCache[affectedKey] = fromRemote.value
-                        }
+                        (await this._fetchObject(affectedKey, true))
+                            .map(val => this._localCache[affectedKey] = val)
                         break
                     case 'del':
                         this._deleteLocal(affectedKey)

@@ -75,7 +75,7 @@ declare module '@micro-fleet/cache/dist/app/CacheProvider' {
 	    	    	    	    	    	    	    /**
 	     * Stores setTimeout token of each key.
 	     */
-	    	    constructor(_options: CacheProviderConstructorOpts);
+	    	    constructor(_options?: CacheProviderConstructorOpts);
 	    	    /**
 	     * Clears all local cache and disconnects from remote cache service.
 	     */
@@ -154,6 +154,10 @@ declare module '@micro-fleet/cache/dist/app/CacheAddOn' {
 	     * @see IServiceAddOn.dispose
 	     */
 	    dispose(): Promise<void>;
+	    	    	    	    /**
+	     * Keeps appending `value` to `arr` until the array reaches specified `newLength`.
+	     * Returns a new array instance.
+	     */
 	    	}
 
 }

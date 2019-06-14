@@ -12,10 +12,14 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+/// <reference types="debug" />
+const debug = require('debug')('mcft:cache:CacheAddOn');
 const common_1 = require("@micro-fleet/common");
 const CacheProvider_1 = require("./CacheProvider");
 const Types_1 = require("./Types");
 const { SvcSettingKeys: S, CacheSettingKeys: C } = common_1.constants;
+const DEFAULT_HOST = 'localhost';
+const DEFAULT_PORT = 6379;
 let CacheAddOn = class CacheAddOn {
     constructor(_configProvider, _depContainer) {
         this._configProvider = _configProvider;
@@ -28,26 +32,30 @@ let CacheAddOn = class CacheAddOn {
      * @see IServiceAddOn.init
      */
     init() {
-        const svcSlug = this._configProvider.get(S.SERVICE_SLUG);
-        if (!svcSlug.hasValue) {
-            return Promise.reject(new common_1.CriticalException('SERVICE_SLUG_REQUIRED'));
-        }
-        const opts = {
-            name: svcSlug.value,
-        };
-        const result = this._buildConnDetails();
-        if (result.hasValue) {
-            const connDetails = result.value;
-            if (connDetails.length == 1) {
-                opts.single = connDetails[0];
+        return this._configProvider.get(S.SERVICE_SLUG)
+            .chain(svcSlug => {
+            return this._buildConnDetails()
+                .map(details => [svcSlug, details])
+                .orElse(() => [svcSlug, null]);
+        })
+            .map(([svcSlug, details]) => {
+            const opts = {
+                name: svcSlug,
+            };
+            if (details && details.length > 1) {
+                opts.cluster = details;
             }
-            else {
-                opts.cluster = connDetails;
+            else if (details) {
+                opts.single = details[0];
             }
-        }
-        this._cacheProvider = new CacheProvider_1.CacheProvider(opts);
-        this._depContainer.bindConstant(Types_1.Types.CACHE_PROVIDER, this._cacheProvider);
-        return Promise.resolve();
+            return Promise.resolve(opts);
+        })
+            .orElse(() => Promise.reject(new common_1.CriticalException('SERVICE_SLUG_REQUIRED')))
+            .value
+            .then((opts) => {
+            this._cacheProvider = new CacheProvider_1.CacheProvider(opts);
+            this._depContainer.bindConstant(Types_1.Types.CACHE_PROVIDER, this._cacheProvider);
+        });
     }
     /**
      * @see IServiceAddOn.deadLetter
@@ -62,22 +70,63 @@ let CacheAddOn = class CacheAddOn {
         return (this._cacheProvider) ? this._cacheProvider.dispose() : Promise.resolve();
     }
     _buildConnDetails() {
-        const provider = this._configProvider, nConn = provider.get(C.CACHE_NUM_CONN), details = [];
-        if (!nConn.hasValue) {
-            return new common_1.Maybe;
-        }
-        for (let i = 0; i < nConn.value; ++i) {
-            const host = provider.get(C.CACHE_HOST + i);
-            const port = provider.get(C.CACHE_PORT + i);
-            if (!host.hasValue || !port.hasValue) {
-                continue;
+        return this._configProvider.get(C.CACHE_NUM_CONN)
+            .chain((nConn) => {
+            const hosts = this._getHosts(nConn);
+            const ports = this._getPorts(nConn);
+            const details = [];
+            for (let i = 0; i < nConn; ++i) {
+                details.push({
+                    host: hosts[i],
+                    port: ports[i],
+                });
             }
-            details.push({
-                host: host.value,
-                port: port.value,
-            });
+            if (details.length) {
+                debug(`Cache with ${details.length} connections`);
+                return common_1.Maybe.Just(details);
+            }
+            else {
+                debug('No cache connection');
+                return common_1.Maybe.Nothing();
+            }
+        });
+    }
+    _getHosts(nConn) {
+        return this._configProvider.get(C.CACHE_HOST)
+            .map((value) => {
+            // If number of connection is greater than number of given host addresses,
+            // we use default address for the rest.
+            if (Array.isArray(value) && value.length != nConn) {
+                return this._padArray(value, nConn, DEFAULT_HOST);
+            }
+            // If there is only one address as string, we use it for all connections
+            return this._padArray([], nConn, value);
+        })
+            .value;
+    }
+    _getPorts(nConn) {
+        return this._configProvider.get(C.CACHE_PORT)
+            .map((value) => {
+            // If number of connection is greater than number of given ports,
+            // we use default port for the rest.
+            if (Array.isArray(value) && value.length != nConn) {
+                return this._padArray(value, nConn, DEFAULT_PORT);
+            }
+            // If there is only one address as number, we use it for all connections
+            return this._padArray([], nConn, value);
+        })
+            .value;
+    }
+    /**
+     * Keeps appending `value` to `arr` until the array reaches specified `newLength`.
+     * Returns a new array instance.
+     */
+    _padArray(arr, newLength, value) {
+        const newArr = [...arr];
+        while (newArr.length < newLength) {
+            newArr.push(value);
         }
-        return details.length ? new common_1.Maybe(details) : new common_1.Maybe;
+        return newArr;
     }
 };
 CacheAddOn = __decorate([

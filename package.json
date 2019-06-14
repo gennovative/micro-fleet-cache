@@ -1,6 +1,6 @@
 {
     "name": "@micro-fleet/cache",
-    "version": "1.1.6",
+    "version": "1.1.7",
     "description": "Contains utility to manage cache.",
     "scripts": {
         "build": "npm run compile && npm run test",
@@ -9,25 +9,27 @@
         "dedup": "rimraf node_modules/**/node_modules/**/typings",
         "compile": "npm run clean && npm run lint && tsc --pretty",
         "release": "npm run build && npm run definition",
-        "test": "nyc --reporter=json --reporter=html --include dist/app/**/*.js mocha --recursive dist/test",
+        "test": "nyc --extension=.ts --reporter=json --reporter=html --include dist/app/**/*.js --include src/app/**/*.ts mocha --recursive dist/test",
         "lint": "tslint --fix 'src/**/*.ts'",
         "watch": "npm run clean && npm run lint && tsc --watch --pretty",
         "linkPackages": "node ../../../scripts/linkPackages.js",
         "prepublishOnly": "npm run release"
     },
     "dependencies": {
+        "debug": "^4.1.1",
         "redis-clustr": "~1.7"
     },
     "devDependencies": {
-        "@types/redis": "~2.8",
         "@types/chai": "~4.1",
         "@types/chai-spies": "~0.0.1",
+        "@types/debug": "^4.1.4",
         "@types/mocha": "~5.2",
         "@types/node": "~10.14",
+        "@types/redis": "~2.8",
         "chai": "~4.1",
         "chai-spies": "git://github.com/chaijs/chai-spies.git#b11aeebf",
         "mocha": "~5.2",
-        "nyc": "~13.3",
+        "nyc": "~14.1",
         "rimraf": "~2.6",
         "ts-declarator": "~1.0",
         "tslint": "~5.11",

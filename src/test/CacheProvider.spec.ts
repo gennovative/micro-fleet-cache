@@ -32,6 +32,17 @@ describe('CacheProvider (single)', function () {
         globalCache = null
     })
 
+    describe('constructor', () => {
+        it('should use local cache only if no option is provided', () => {
+            // Act
+            const cache = new CacheProvider()
+
+            // Assert
+            expect(cache['_localCache']).to.exist
+            expect(cache['_engine']).not.to.exist
+        })
+    }) // describe 'constructor'
+
     describe('setPrimitive', () => {
         it('Should not allow null or undefined value', async () => {
             // Arrange
@@ -66,7 +77,7 @@ describe('CacheProvider (single)', function () {
             expect(globalCache['_localCache'][`${FIRST_CACHE}::${KEY}`]).to.equal(valueOne)
 
             const remote = await globalCache.getPrimitive(KEY, { forceRemote: true }) as Maybe<string> // Skip local cache
-            expect(remote.hasValue).to.be.true
+            expect(remote.isJust).to.be.true
             expect(remote.value).to.equal(valueTwo)
 
             // Clean up
@@ -101,7 +112,7 @@ describe('CacheProvider (single)', function () {
 
             // Assert: Remote value exists
             const refetch = await globalCache.getPrimitive(KEY, { forceRemote: true }) as Maybe<string> // Skip local cache
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             expect(refetch.value).to.equal(value)
         })
 
@@ -115,7 +126,7 @@ describe('CacheProvider (single)', function () {
             // Assert: Remote and local values are the same
             const remote = await globalCache.getPrimitive(KEY, { forceRemote: true }) as Maybe<string>, // Skip local cache
                 local = globalCache['_localCache'][`${FIRST_CACHE}::${KEY}`]
-            expect(remote.hasValue).to.be.true
+            expect(remote.isJust).to.be.true
             expect(remote.value).to.equal(local)
         })
 
@@ -133,7 +144,7 @@ describe('CacheProvider (single)', function () {
                         if (refetch) {
                             console.log('Refetch:', refetch)
                         }
-                        expect(refetch.hasValue).to.be.false
+                        expect(refetch.isJust).to.be.false
                         done()
                     }, 1100) // Wait until key expires
                 })
@@ -154,7 +165,7 @@ describe('CacheProvider (single)', function () {
                         if (refetch) {
                             console.log('Refetch:', refetch)
                         }
-                        expect(refetch.hasValue).to.be.false
+                        expect(refetch.isJust).to.be.false
                         done()
                     }, 1100) // Wait until key expires
                 })
@@ -173,11 +184,11 @@ describe('CacheProvider (single)', function () {
                         // Assert
                         const remote = await globalCache.getPrimitive(KEY, { forceRemote: true }) as Maybe<string>,
                             local = globalCache['_localCache'][`${FIRST_CACHE}::${KEY}`]
-                        if (remote || local) {
-                            console.log('Remote:', remote)
-                            console.log('Local:', local)
-                        }
-                        expect(remote.hasValue).to.be.false
+
+                        remote.isJust && console.log('Remote:', remote.value)
+                        local && console.log('Local:', local)
+
+                        expect(remote.isJust).to.be.false
                         expect(local).not.to.exist
                         done()
                     }, 1100) // Wait until key expires
@@ -242,7 +253,7 @@ describe('CacheProvider (single)', function () {
                     forceRemote: true,
                     isGlobal: true,
                 })
-                expect(refetch.hasValue).to.be.true
+                expect(refetch.isJust).to.be.true
                 expect(refetch.value).to.equal(value)
             }
             finally {
@@ -264,7 +275,7 @@ describe('CacheProvider (single)', function () {
             const refetch: Maybe<PrimitiveType> = await globalCache.getPrimitive(KEY, { forceRemote: true })
 
             // Assert
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             expect(refetch.value).to.equal(value)
         })
 
@@ -284,7 +295,7 @@ describe('CacheProvider (single)', function () {
                 const refetch: Maybe<PrimitiveType> = await globalCache.getPrimitive(KEY)
 
                 // Assert
-                expect(refetch.hasValue).to.be.true
+                expect(refetch.isJust).to.be.true
                 expect(refetch.value).to.equal(value)
             }
             finally {
@@ -304,7 +315,7 @@ describe('CacheProvider (single)', function () {
             })
 
             // Assert
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             expect(typeof refetch.value).to.equal('string')
             expect(refetch.value).to.equal(value + '')
         })
@@ -321,7 +332,7 @@ describe('CacheProvider (single)', function () {
             })
 
             // Assert
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             expect(typeof refetch.value).to.equal('number')
             expect(refetch.value).to.equal(value)
         })
@@ -338,7 +349,7 @@ describe('CacheProvider (single)', function () {
             })
 
             // Assert
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             expect(refetch.value).to.equal(value + '')
             expect(typeof refetch.value).to.equal('string')
         })
@@ -355,7 +366,7 @@ describe('CacheProvider (single)', function () {
             })
 
             // Assert
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             expect(typeof refetch.value).to.equal('boolean')
             expect(refetch.value).to.equal(value)
         })
@@ -375,7 +386,7 @@ describe('CacheProvider (single)', function () {
             const refetch: Maybe<PrimitiveType> = await cache.getPrimitive(KEY)
 
             // Assert
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             expect(typeof refetch.value).to.equal('string')
             expect(refetch.value).to.equal(value)
         })
@@ -385,7 +396,7 @@ describe('CacheProvider (single)', function () {
             const refetch: Maybe<PrimitiveType> = await globalCache.getPrimitive(NON_EXIST_KEY)
 
             // Assert
-            expect(refetch.hasValue).to.be.false
+            expect(refetch.isJust).to.be.false
         })
 
         it('Should return empty Maybe if not found (local)', async () => {
@@ -399,7 +410,7 @@ describe('CacheProvider (single)', function () {
             const refetch: Maybe<PrimitiveType> = await localCache.getPrimitive(NON_EXIST_KEY)
 
             // Assert
-            expect(refetch.hasValue).to.be.false
+            expect(refetch.isJust).to.be.false
         })
     }) // describe 'getPrimitive'
 
@@ -431,7 +442,7 @@ describe('CacheProvider (single)', function () {
 
             // Assert
             const refetch = await globalCache.getArray(KEY, { forceRemote: true }) as Maybe<any> // Skip local cache
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             expect(refetch.value).to.deep.equal(arr)
         })
 
@@ -453,7 +464,7 @@ describe('CacheProvider (single)', function () {
 
             // Assert
             const refetch = await globalCache.getArray(KEY, { forceRemote: true }) as Maybe<any> // Skip local cache
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             expect(refetch.value).to.deep.equal(arr)
         })
 
@@ -479,7 +490,7 @@ describe('CacheProvider (single)', function () {
                     forceRemote: true,
                     isGlobal: true,
                 })
-                expect(refetch.hasValue).to.be.true
+                expect(refetch.isJust).to.be.true
                 expect(refetch.value).to.deep.equal(arr)
             }
             finally {
@@ -499,7 +510,7 @@ describe('CacheProvider (single)', function () {
             const refetch: Maybe<PrimitiveType[]> = await globalCache.getArray(KEY, { forceRemote: true })
 
             // Assert
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             expect(refetch.value).to.deep.equal(arr)
         })
 
@@ -519,7 +530,7 @@ describe('CacheProvider (single)', function () {
                 const refetch: Maybe<PrimitiveType[]> = await globalCache.getArray(KEY)
 
                 // Assert
-                expect(refetch.hasValue).to.be.true
+                expect(refetch.isJust).to.be.true
                 expect(refetch.value).to.deep.equal(arr)
             }
             finally {
@@ -546,7 +557,7 @@ describe('CacheProvider (single)', function () {
             const refetch: Maybe<PrimitiveType[]> = await globalCache.getArray(KEY, { forceRemote: true })
 
             // Assert
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             expect(refetch.value).to.deep.equal(arr)
         })
 
@@ -565,7 +576,7 @@ describe('CacheProvider (single)', function () {
             const refetch: Maybe<PrimitiveType[]> = await cache.getArray(KEY)
 
             // Assert
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             expect(refetch.value).to.deep.equal(arr)
         })
 
@@ -574,7 +585,7 @@ describe('CacheProvider (single)', function () {
             const refetch: Maybe<PrimitiveType[]> = await globalCache.getArray(NON_EXIST_KEY)
 
             // Assert
-            expect(refetch.hasValue).to.be.false
+            expect(refetch.isJust).to.be.false
         })
 
         it('Should return empty Maybe if not found (local)', async () => {
@@ -588,7 +599,7 @@ describe('CacheProvider (single)', function () {
             const refetch: Maybe<PrimitiveType[]> = await localCache.getArray(NON_EXIST_KEY)
 
             // Assert
-            expect(refetch.hasValue).to.be.false
+            expect(refetch.isJust).to.be.false
         })
 
     }) // describe 'getArray'
@@ -635,7 +646,7 @@ describe('CacheProvider (single)', function () {
             expect(globalCache['_localCache'][`${FIRST_CACHE}::${KEY}`]).to.deep.equal(objOne)
 
             const remote = await globalCache.getObject(KEY, { forceRemote: true }) as Maybe<any> // Skip local cache
-            expect(remote.hasValue).to.be.true
+            expect(remote.isJust).to.be.true
             expect(remote.value).to.deep.equal(objTwo)
 
             // Clean up
@@ -676,7 +687,7 @@ describe('CacheProvider (single)', function () {
 
             // Assert: Remote value exists
             const refetch = await globalCache.getObject(KEY, { forceRemote: true }) as Maybe<any> // Skip local cache
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             expect(refetch.value).to.deep.equal(obj)
         })
 
@@ -693,7 +704,7 @@ describe('CacheProvider (single)', function () {
             // Assert: Remote and local values are the same
             const remote = await globalCache.getObject(KEY, { forceRemote: true }) as Maybe<any> // Skip local cache
             const local = globalCache['_localCache'][`${FIRST_CACHE}::${KEY}`]
-            expect(remote.hasValue).to.be.true
+            expect(remote.isJust).to.be.true
             expect(remote.value).to.deep.equal(local)
         })
 
@@ -711,10 +722,10 @@ describe('CacheProvider (single)', function () {
                     setTimeout(async () => {
                         // Assert
                         const refetch = await globalCache.getObject(KEY, { forceRemote: false }) as Maybe<any>
-                        if (refetch.hasValue) {
+                        if (refetch.isJust) {
                             console.log('Refetch:', refetch)
                         }
-                        expect(refetch.hasValue).to.be.false
+                        expect(refetch.isJust).to.be.false
                         done()
                     }, 1100) // Wait until key expires
                 })
@@ -734,10 +745,10 @@ describe('CacheProvider (single)', function () {
                     setTimeout(async () => {
                         // Assert
                         const refetch = await globalCache.getObject(KEY, { forceRemote: true }) as Maybe<any>
-                        if (refetch.hasValue) {
+                        if (refetch.isJust) {
                             console.log('Refetch:', refetch)
                         }
-                        expect(refetch.hasValue).to.be.false
+                        expect(refetch.isJust).to.be.false
                         done()
                     }, 1100) // Wait until key expires
                 })
@@ -804,7 +815,7 @@ describe('CacheProvider (single)', function () {
                     forceRemote: true,
                     isGlobal: true,
                 })
-                expect(refetch.hasValue).to.be.true
+                expect(refetch.isJust).to.be.true
                 expect(refetch.value).to.deep.equal(obj)
             }
             finally {
@@ -831,7 +842,7 @@ describe('CacheProvider (single)', function () {
             })
 
             // Assert
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             const val = refetch.value
             for (const p in val) {
                 expect(val[p]).to.equal(obj[p] + '')
@@ -862,7 +873,7 @@ describe('CacheProvider (single)', function () {
                 })
 
                 // Assert
-                expect(refetch.hasValue).to.be.true
+                expect(refetch.isJust).to.be.true
                 const val = refetch.value
                 for (const p in val) {
                     expect(val[p]).to.equal(obj[p] + '')
@@ -890,7 +901,7 @@ describe('CacheProvider (single)', function () {
             })
 
             // Assert
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             expect(refetch.value).to.deep.equal(obj)
         })
 
@@ -911,7 +922,7 @@ describe('CacheProvider (single)', function () {
             const refetch: Maybe<PrimitiveFlatJson> = await cache.getObject(KEY)
 
             // Assert
-            expect(refetch.hasValue).to.be.true
+            expect(refetch.isJust).to.be.true
             expect(refetch.value).to.deep.equal(obj)
         })
 
@@ -920,7 +931,7 @@ describe('CacheProvider (single)', function () {
             const refetch: Maybe<PrimitiveFlatJson> = await globalCache.getObject(NON_EXIST_KEY)
 
             // Assert
-            expect(refetch.hasValue).to.be.false
+            expect(refetch.isJust).to.be.false
         })
     }) // describe 'getPrimitive'
 

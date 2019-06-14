@@ -32,15 +32,18 @@ class CacheProvider {
         };
         this._cacheExps = {};
         this._cacheLocks = {};
+        if (!_options) {
+            return;
+        }
         if (_options.cluster) {
             this._promisify(RedisClustr.prototype);
             this._engine = new RedisClustr({
                 servers: _options.cluster,
             });
         }
-        else {
+        else if (_options.single) {
             this._promisify(redis.RedisClient.prototype);
-            this._engine = this._connectSingle();
+            this._engine = this._connectSingle(_options.single);
         }
     }
     get _hasEngine() {
@@ -83,12 +86,12 @@ class CacheProvider {
             return this._fetchPrimitive(key, parseType);
         }
         else if (this._localCache.hasOwnProperty(key)) {
-            return Promise.resolve(new common_1.Maybe(this._localCache[key]));
+            return Promise.resolve(common_1.Maybe.Just(this._localCache[key]));
         }
         else if (this._hasEngine) {
             return this._fetchPrimitive(key, parseType);
         }
-        return Promise.resolve(new common_1.Maybe);
+        return Promise.resolve(common_1.Maybe.Nothing());
     }
     /**
      * Retrieves an array of strings or numbers or booleans from cache.
@@ -98,21 +101,20 @@ class CacheProvider {
     async getArray(key, opts = {}) {
         common_1.Guard.assertArgDefined('key', key);
         key = opts.isGlobal ? key : this._realKey(key);
-        const emptyMaybe = new common_1.Maybe();
         let stringified;
         if (opts.forceRemote && this._hasEngine) {
-            stringified = (await this._fetchPrimitive(key, false)).TryGetValue(null);
+            stringified = (await this._fetchPrimitive(key, false));
         }
         else if (this._localCache.hasOwnProperty(key)) {
-            stringified = this._localCache[key];
+            stringified = common_1.Maybe.Just(this._localCache[key]);
         }
         else if (this._hasEngine) {
-            stringified = (await this._fetchPrimitive(key, false)).TryGetValue(null);
+            stringified = (await this._fetchPrimitive(key, false));
         }
-        if ((typeof stringified === 'string')) {
-            return Promise.resolve(new common_1.Maybe(JSON.parse(stringified)));
+        else {
+            stringified = common_1.Maybe.Nothing();
         }
-        return Promise.resolve(emptyMaybe);
+        return Promise.resolve(stringified.map(JSON.parse));
     }
     /**
      * Retrieves an object from cache.
@@ -126,7 +128,7 @@ class CacheProvider {
             return this._fetchObject(key, parseType);
         }
         else if (this._localCache.hasOwnProperty(key)) {
-            return Promise.resolve(new common_1.Maybe(this._localCache[key]));
+            return Promise.resolve(common_1.Maybe.Just(this._localCache[key]));
         }
         return this._fetchObject(key, parseType);
     }
@@ -200,15 +202,8 @@ class CacheProvider {
             await this._syncOn(key);
         }
     }
-    _connectSingle() {
-        const opts = this._options.single;
-        if (!opts) {
-            return null;
-        }
-        return redis.createClient({
-            host: opts.host,
-            port: opts.port,
-        });
+    _connectSingle({ host, port }) {
+        return redis.createClient({ host, port });
     }
     _defaultLevel(level) {
         return (level)
@@ -227,12 +222,12 @@ class CacheProvider {
     async _fetchObject(key, parseType) {
         const response = await this._engine.hgetallAsync(key);
         const data = (parseType ? this._parseObjectType(response) : response);
-        return (data == null) ? new common_1.Maybe : new common_1.Maybe(data);
+        return (data == null) ? common_1.Maybe.Nothing() : common_1.Maybe.Just(data);
     }
     async _fetchPrimitive(key, parseType) {
         const response = await this._engine.getAsync(key);
         const data = (parseType ? this._parsePrimitiveType(response) : response);
-        return (data == null) ? new common_1.Maybe : new common_1.Maybe(data);
+        return (data == null) ? common_1.Maybe.Nothing() : common_1.Maybe.Just(data);
     }
     _createLockChain() {
         return [];
@@ -287,31 +282,26 @@ class CacheProvider {
         let sub = this._engineSub;
         if (!sub) {
             this._keyRegrex = new RegExp(`${EVENT_PREFIX}(.*)`);
-            if (!this._options.cluster) {
-                sub = this._engineSub = this._connectSingle();
-            }
-            else {
+            if (this._options.cluster) {
                 // Redis-clusr can handle bi-directional commands.
                 sub = this._engineSub = this._engine;
+            }
+            else {
+                sub = this._engineSub = this._connectSingle(this._options.single);
             }
             // TODO: This config should be in Redis conf
             await this._engine.config('SET', 'notify-keyspace-events', 'KEA');
             sub.on('message', async (channel, action) => {
                 const affectedKey = this._extractKey(channel);
-                let fromRemote;
                 await this._lockKey(key);
                 switch (action) {
                     case 'set':
-                        fromRemote = await this._fetchPrimitive(affectedKey, true);
-                        if (fromRemote.hasValue) {
-                            this._localCache[affectedKey] = fromRemote.value;
-                        }
+                        (await this._fetchPrimitive(affectedKey, true))
+                            .map(val => this._localCache[affectedKey] = val);
                         break;
                     case 'hset':
-                        fromRemote = await this._fetchObject(affectedKey, true);
-                        if (fromRemote.hasValue) {
-                            this._localCache[affectedKey] = fromRemote.value;
-                        }
+                        (await this._fetchObject(affectedKey, true))
+                            .map(val => this._localCache[affectedKey] = val);
                         break;
                     case 'del':
                         this._deleteLocal(affectedKey);
