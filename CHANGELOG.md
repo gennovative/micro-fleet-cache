@@ -1,6 +1,6 @@
 ## VERSIONS
 
-### 1.1.7
+### 1.1.8
 - Upgraded to new version of `@micro-fleet/common` with `Maybe`'s breaking change
 
 ### 1.1.6
