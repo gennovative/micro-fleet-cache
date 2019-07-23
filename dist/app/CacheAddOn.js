@@ -15,7 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 /// <reference types="debug" />
 const debug = require('debug')('mcft:cache:CacheAddOn');
 const common_1 = require("@micro-fleet/common");
-const CacheProvider_1 = require("./CacheProvider");
+const RedisCacheProvider_1 = require("./RedisCacheProvider");
 const Types_1 = require("./Types");
 const { SvcSettingKeys: S, CacheSettingKeys: C } = common_1.constants;
 const DEFAULT_HOST = 'localhost';
@@ -36,7 +36,7 @@ let CacheAddOn = class CacheAddOn {
             .chain(svcSlug => {
             return this._buildConnDetails()
                 .map(details => [svcSlug, details])
-                .orElse(() => [svcSlug, null]);
+                .mapElse(() => [svcSlug, null]);
         })
             .map(([svcSlug, details]) => {
             const opts = {
@@ -50,10 +50,10 @@ let CacheAddOn = class CacheAddOn {
             }
             return Promise.resolve(opts);
         })
-            .orElse(() => Promise.reject(new common_1.CriticalException('SERVICE_SLUG_REQUIRED')))
+            .mapElse(() => Promise.reject(new common_1.CriticalException('SERVICE_SLUG_REQUIRED')))
             .value
             .then((opts) => {
-            this._cacheProvider = new CacheProvider_1.CacheProvider(opts);
+            this._cacheProvider = new RedisCacheProvider_1.RedisCacheProvider(opts);
             this._depContainer.bindConstant(Types_1.Types.CACHE_PROVIDER, this._cacheProvider);
         });
     }

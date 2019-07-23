@@ -1,4 +1,6 @@
 export * from './CacheAddOn'
-export * from './CacheProvider'
+export * from './RedisCacheProvider'
+export * from './CacheSettings'
+export * from './ICacheProvider'
 export * from './Types'
 export * from './register-addon'

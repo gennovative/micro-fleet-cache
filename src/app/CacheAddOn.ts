@@ -3,11 +3,11 @@ const debug: debug.IDebugger = require('debug')('mcft:cache:CacheAddOn')
 
 
 import { injectable, inject, Guard, IDependencyContainer, Types as CmT, Maybe,
-    IConfigurationProvider, CacheConnectionDetail, CriticalException,
-    constants } from '@micro-fleet/common'
+    IConfigurationProvider, CriticalException, constants, IServiceAddOn} from '@micro-fleet/common'
 
-import { CacheProvider, CacheProviderConstructorOpts } from './CacheProvider'
+import { RedisCacheProvider, CacheProviderConstructorOpts } from './RedisCacheProvider'
 import { Types as T } from './Types'
+import { CacheConnectionDetail } from './ICacheProvider'
 
 
 const { SvcSettingKeys: S, CacheSettingKeys: C } = constants
@@ -18,7 +18,7 @@ const DEFAULT_PORT = 6379
 export class CacheAddOn implements IServiceAddOn {
     public readonly name: string = 'CacheAddOn'
 
-    private _cacheProvider: CacheProvider
+    private _cacheProvider: RedisCacheProvider
 
     constructor(
         @inject(CmT.CONFIG_PROVIDER) private _configProvider: IConfigurationProvider,
@@ -36,7 +36,7 @@ export class CacheAddOn implements IServiceAddOn {
             .chain(svcSlug => {
                 return this._buildConnDetails()
                     .map<[string, CacheConnectionDetail[]]>(details => [svcSlug, details])
-                    .orElse(() => [svcSlug, null])
+                    .mapElse(() => [svcSlug, null])
             })
             .map(([svcSlug, details]) => {
                 const opts: CacheProviderConstructorOpts = {
@@ -52,13 +52,13 @@ export class CacheAddOn implements IServiceAddOn {
 
                 return Promise.resolve(opts)
             })
-            .orElse(
+            .mapElse(
                 () => Promise.reject(new CriticalException('SERVICE_SLUG_REQUIRED'))
             )
             .value
             .then((opts) => {
-                this._cacheProvider = new CacheProvider(opts)
-                this._depContainer.bindConstant<CacheProvider>(T.CACHE_PROVIDER, this._cacheProvider)
+                this._cacheProvider = new RedisCacheProvider(opts)
+                this._depContainer.bindConstant<RedisCacheProvider>(T.CACHE_PROVIDER, this._cacheProvider)
             })
     }
 

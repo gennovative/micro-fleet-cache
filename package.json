@@ -1,6 +1,6 @@
 {
     "name": "@micro-fleet/cache",
-    "version": "1.1.7",
+    "version": "1.1.8-rc2",
     "description": "Contains utility to manage cache.",
     "scripts": {
         "build": "npm run compile && npm run test",
@@ -16,7 +16,7 @@
         "prepublishOnly": "npm run release"
     },
     "dependencies": {
-        "debug": "^4.1.1",
+        "debug": "~4.1",
         "redis-clustr": "~1.7"
     },
     "devDependencies": {

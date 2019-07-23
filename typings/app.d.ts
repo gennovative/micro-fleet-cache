@@ -1,6 +1,16 @@
 /// <reference path="./global.d.ts" />
-declare module '@micro-fleet/cache/dist/app/CacheProvider' {
-	import { CacheConnectionDetail, Maybe } from '@micro-fleet/common';
+declare module '@micro-fleet/cache/dist/app/ICacheProvider' {
+	import { Maybe, PrimitiveType } from '@micro-fleet/common';
+	export type CacheConnectionDetail = {
+	    /**
+	         * Address of remote cache service.
+	         */
+	    host?: string;
+	    /**
+	     * Port of remote cache service.
+	     */
+	    port?: number;
+	};
 	export enum CacheLevel {
 	    /**
 	     * Only caches in local memory.
@@ -15,21 +25,6 @@ declare module '@micro-fleet/cache/dist/app/CacheProvider' {
 	     */
 	    BOTH = 3
 	}
-	export type CacheProviderConstructorOpts = {
-	    /**
-	     * Is prepended in cache key to avoid key collision between cache instances.
-	     */
-	    name: string;
-	    /**
-	     * Credentials to connect to a single cache service.
-	     */
-	    single?: CacheConnectionDetail;
-	    /**
-	     * Credentials to connect to a cluster of cache services.
-	     * This option overrides `single`.
-	     */
-	    cluster?: CacheConnectionDetail[];
-	};
 	export type CacheSetOptions = {
 	    /**
 	     * Expiration time in seconds. Default is to never expire.
@@ -71,7 +66,74 @@ declare module '@micro-fleet/cache/dist/app/CacheProvider' {
 	/**
 	 * Provides methods to read and write data to cache.
 	 */
-	export class CacheProvider {
+	export interface ICacheProvider {
+	    /**
+	     * Clears all local cache and disconnects from remote cache service.
+	     */
+	    dispose(): Promise<void>;
+	    /**
+	     * Removes a key from cache.
+	     */
+	    delete(key: string, isGlobal?: boolean): Promise<void>;
+	    /**
+	     * Retrieves a string or number or boolean from cache.
+	     * @param {string} key The key to look up.
+	     */
+	    getPrimitive(key: string, opts?: CacheGetOptions): Promise<Maybe<PrimitiveType>>;
+	    /**
+	     * Retrieves an array of strings or numbers or booleans from cache.
+	     * @param {string} key The key to look up.
+	     * @param {boolean} forceRemote Skip local cache and fetch from remote server. Default is `false`.
+	     */
+	    getArray(key: string, opts?: CacheGetOptions): Promise<Maybe<PrimitiveType[]>>;
+	    /**
+	     * Retrieves an object from cache.
+	     * @param {string} key The key to look up.
+	     */
+	    getObject(key: string, opts?: CacheGetOptions): Promise<Maybe<object>>;
+	    /**
+	     * Saves a string or number or boolean to cache.
+	     * @param {string} key The key for later look up.
+	     * @param {Primitive} value Primitive value to save.
+	     */
+	    setPrimitive(key: string, value: PrimitiveType, opts?: CacheSetOptions): Promise<void>;
+	    /**
+	     * Saves an array to cache.
+	     * @param {string} key The key for later look up.
+	     * @param {PrimitiveType[] | object[] } arr Array of any type to save.
+	     */
+	    setArray(key: string, arr: any[], opts?: CacheSetOptions): Promise<void>;
+	    /**
+	     * Saves an object to cache.
+	     * @param {string} key The key for later look up.
+	     * @param {object} value Object value to save.
+	     */
+	    setObject(key: string, value: object, opts?: CacheSetOptions): Promise<void>;
+	}
+
+}
+declare module '@micro-fleet/cache/dist/app/RedisCacheProvider' {
+	import { Maybe, PrimitiveType } from '@micro-fleet/common';
+	import { ICacheProvider, CacheGetOptions, CacheSetOptions, CacheConnectionDetail } from '@micro-fleet/cache/dist/app/ICacheProvider';
+	export type CacheProviderConstructorOpts = {
+	    /**
+	     * Is prepended in cache key to avoid key collision between cache instances.
+	     */
+	    name: string;
+	    /**
+	     * Credentials to connect to a single cache service.
+	     */
+	    single?: CacheConnectionDetail;
+	    /**
+	     * Credentials to connect to a cluster of cache services.
+	     * This option overrides `single`.
+	     */
+	    cluster?: CacheConnectionDetail[];
+	};
+	/**
+	 * Provides methods to read and write data to cache.
+	 */
+	export class RedisCacheProvider implements ICacheProvider {
 	    	    	    	    	    	    	    /**
 	     * Stores setTimeout token of each key.
 	     */
@@ -99,7 +161,7 @@ declare module '@micro-fleet/cache/dist/app/CacheProvider' {
 	     * Retrieves an object from cache.
 	     * @param {string} key The key to look up.
 	     */
-	    getObject(key: string, opts?: CacheGetOptions): Promise<Maybe<PrimitiveFlatJson>>;
+	    getObject(key: string, opts?: CacheGetOptions): Promise<Maybe<object>>;
 	    /**
 	     * Saves a string or number or boolean to cache.
 	     * @param {string} key The key for later look up.
@@ -109,15 +171,15 @@ declare module '@micro-fleet/cache/dist/app/CacheProvider' {
 	    /**
 	     * Saves an array to cache.
 	     * @param {string} key The key for later look up.
-	     * @param {PrimitiveType[] | PrimitiveFlatJson[] } arr Array of any type to save.
+	     * @param {PrimitiveType[] | object[] } arr Array of any type to save.
 	     */
 	    setArray(key: string, arr: any[], opts?: CacheSetOptions): Promise<void>;
 	    /**
 	     * Saves an object to cache.
 	     * @param {string} key The key for later look up.
-	     * @param {PrimitiveFlatJson} value Object value to save.
+	     * @param {object} value Object value to save.
 	     */
-	    setObject(key: string, value: PrimitiveFlatJson, opts?: CacheSetOptions): Promise<void>;
+	    setObject(key: string, value: object, opts?: CacheSetOptions): Promise<void>;
 	    	    	    	    	    	    	    	    /**
 	     * Removes the last lock from lock queue then returns it.
 	     */
@@ -138,7 +200,7 @@ declare module '@micro-fleet/cache/dist/app/Types' {
 
 }
 declare module '@micro-fleet/cache/dist/app/CacheAddOn' {
-	import { IDependencyContainer, IConfigurationProvider } from '@micro-fleet/common';
+	import { IDependencyContainer, IConfigurationProvider, IServiceAddOn } from '@micro-fleet/common';
 	export class CacheAddOn implements IServiceAddOn {
 	    	    	    readonly name: string;
 	    	    constructor(_configProvider: IConfigurationProvider, _depContainer: IDependencyContainer);
@@ -161,6 +223,25 @@ declare module '@micro-fleet/cache/dist/app/CacheAddOn' {
 	    	}
 
 }
+declare module '@micro-fleet/cache/dist/app/CacheSettings' {
+	import { SettingItem } from '@micro-fleet/common';
+	import { CacheConnectionDetail } from '@micro-fleet/cache/dist/app/ICacheProvider';
+	/**
+	 * Represents an array of cache settings.
+	 */
+	export class CacheSettings extends Array<SettingItem> {
+	    	    constructor();
+	    /**
+	     * Gets number of connection settings.
+	     */
+	    readonly total: number;
+	    /**
+	     * Parses then adds a server detail to setting item array.
+	     */
+	    pushServer(detail: CacheConnectionDetail): void;
+	}
+
+}
 declare module '@micro-fleet/cache/dist/app/register-addon' {
 	import { CacheAddOn } from '@micro-fleet/cache/dist/app/CacheAddOn';
 	export function registerCacheAddOn(): CacheAddOn;
@@ -168,7 +249,9 @@ declare module '@micro-fleet/cache/dist/app/register-addon' {
 }
 declare module '@micro-fleet/cache' {
 	export * from '@micro-fleet/cache/dist/app/CacheAddOn';
-	export * from '@micro-fleet/cache/dist/app/CacheProvider';
+	export * from '@micro-fleet/cache/dist/app/RedisCacheProvider';
+	export * from '@micro-fleet/cache/dist/app/CacheSettings';
+	export * from '@micro-fleet/cache/dist/app/ICacheProvider';
 	export * from '@micro-fleet/cache/dist/app/Types';
 	export * from '@micro-fleet/cache/dist/app/register-addon';
 

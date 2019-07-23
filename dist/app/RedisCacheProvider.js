@@ -5,26 +5,12 @@ const redis = require("redis");
 const RedisClustr = require("redis-clustr");
 redis.Multi.prototype.execAsync = util.promisify(redis.Multi.prototype.exec);
 const common_1 = require("@micro-fleet/common");
+const ICacheProvider_1 = require("./ICacheProvider");
 const EVENT_PREFIX = '__keyspace@0__:';
-var CacheLevel;
-(function (CacheLevel) {
-    /**
-     * Only caches in local memory.
-     */
-    CacheLevel[CacheLevel["LOCAL"] = 1] = "LOCAL";
-    /**
-     * Only caches in remote service.
-     */
-    CacheLevel[CacheLevel["REMOTE"] = 2] = "REMOTE";
-    /**
-     * Caches in remote service and keeps sync with local memory.
-     */
-    CacheLevel[CacheLevel["BOTH"] = 3] = "BOTH";
-})(CacheLevel = exports.CacheLevel || (exports.CacheLevel = {}));
 /**
  * Provides methods to read and write data to cache.
  */
-class CacheProvider {
+class RedisCacheProvider {
     constructor(_options) {
         this._options = _options;
         this._localCache = {
@@ -144,11 +130,11 @@ class CacheProvider {
         const level = this._defaultLevel(opts.level);
         const duration = opts.duration || 0;
         key = opts.isGlobal ? key : this._realKey(key);
-        if (this._includeBit(level, CacheLevel.LOCAL)) {
+        if (this._includeBit(level, ICacheProvider_1.CacheLevel.LOCAL)) {
             this._localCache[key] = value;
             this._setLocalExp(key, duration);
         }
-        if (this._hasEngine && this._includeBit(level, CacheLevel.REMOTE)) {
+        if (this._hasEngine && this._includeBit(level, ICacheProvider_1.CacheLevel.REMOTE)) {
             multi = this._engine.multi();
             multi.del(key);
             multi.set(key, value);
@@ -157,14 +143,14 @@ class CacheProvider {
             }
             await multi.execAsync();
         }
-        if (this._hasEngine && this._includeBit(level, CacheLevel.BOTH)) {
+        if (this._hasEngine && this._includeBit(level, ICacheProvider_1.CacheLevel.BOTH)) {
             await this._syncOn(key);
         }
     }
     /**
      * Saves an array to cache.
      * @param {string} key The key for later look up.
-     * @param {PrimitiveType[] | PrimitiveFlatJson[] } arr Array of any type to save.
+     * @param {PrimitiveType[] | object[] } arr Array of any type to save.
      */
     setArray(key, arr, opts = {}) {
         common_1.Guard.assertArgDefined('key', key);
@@ -176,7 +162,7 @@ class CacheProvider {
     /**
      * Saves an object to cache.
      * @param {string} key The key for later look up.
-     * @param {PrimitiveFlatJson} value Object value to save.
+     * @param {object} value Object value to save.
      */
     async setObject(key, value, opts = {}) {
         common_1.Guard.assertArgDefined('key', key);
@@ -185,11 +171,11 @@ class CacheProvider {
         const level = this._defaultLevel(opts.level);
         const duration = opts.duration || 0;
         key = opts.isGlobal ? key : this._realKey(key);
-        if (this._includeBit(level, CacheLevel.LOCAL)) {
+        if (this._includeBit(level, ICacheProvider_1.CacheLevel.LOCAL)) {
             this._localCache[key] = value;
             this._setLocalExp(key, duration);
         }
-        if (this._hasEngine && this._includeBit(level, CacheLevel.REMOTE)) {
+        if (this._hasEngine && this._includeBit(level, ICacheProvider_1.CacheLevel.REMOTE)) {
             multi = this._engine.multi();
             multi.del(key);
             multi.hmset(key, value);
@@ -198,7 +184,7 @@ class CacheProvider {
             }
             await multi.execAsync();
         }
-        if (this._hasEngine && this._includeBit(level, CacheLevel.BOTH)) {
+        if (this._hasEngine && this._includeBit(level, ICacheProvider_1.CacheLevel.BOTH)) {
             await this._syncOn(key);
         }
     }
@@ -208,7 +194,7 @@ class CacheProvider {
     _defaultLevel(level) {
         return (level)
             ? level
-            : (this._hasEngine) ? CacheLevel.REMOTE : CacheLevel.LOCAL;
+            : (this._hasEngine) ? ICacheProvider_1.CacheLevel.REMOTE : ICacheProvider_1.CacheLevel.LOCAL;
     }
     _deleteLocal(key) {
         delete this._localCache[key];
@@ -356,5 +342,5 @@ class CacheProvider {
         return `${this._options.name}::${key}`;
     }
 }
-exports.CacheProvider = CacheProvider;
-//# sourceMappingURL=CacheProvider.js.map
+exports.RedisCacheProvider = RedisCacheProvider;
+//# sourceMappingURL=RedisCacheProvider.js.map

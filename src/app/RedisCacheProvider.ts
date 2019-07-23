@@ -2,8 +2,10 @@ import * as util from 'util'
 import * as redis from 'redis'
 import * as RedisClustr from 'redis-clustr'
 redis.Multi.prototype.execAsync = util.promisify(redis.Multi.prototype.exec)
+import { Maybe, Guard, PrimitiveType } from '@micro-fleet/common'
 
-import { CacheConnectionDetail, Maybe, Guard } from '@micro-fleet/common'
+import { ICacheProvider, CacheGetOptions, CacheSetOptions,
+    CacheLevel, CacheConnectionDetail } from './ICacheProvider'
 
 
 type CacheLockChain = Promise<void>[]
@@ -17,23 +19,6 @@ interface MultiAsync extends redis.Multi {
 }
 
 const EVENT_PREFIX = '__keyspace@0__:'
-
-export enum CacheLevel {
-    /**
-     * Only caches in local memory.
-     */
-    LOCAL = 1, // Binary: 01
-
-    /**
-     * Only caches in remote service.
-     */
-    REMOTE = 2, // Binary: 10
-
-    /**
-     * Caches in remote service and keeps sync with local memory.
-     */
-    BOTH = 3, // Binary: 11
-}
 
 export type CacheProviderConstructorOpts = {
     /**
@@ -53,58 +38,14 @@ export type CacheProviderConstructorOpts = {
     cluster?: CacheConnectionDetail[]
 }
 
-export type CacheSetOptions = {
-    /**
-     * Expiration time in seconds. Default is to never expire.
-     */
-    duration?: number,
-
-    /**
-     * Whether to save in local cache only, or remote only, or both.
-     * If both, then local cache is kept in sync with remote value even when
-     * this value is updated in remote service by another app process.
-     */
-    level?: CacheLevel,
-
-    /**
-     * If true, the key is not prepended with service slug, and is accessible
-     * by other CacheProvider instances from other services.
-     * Default is `false`.
-     */
-    isGlobal?: boolean,
-}
-
-export type CacheGetOptions = {
-    /**
-     * Skip local cache and fetch from remote server.
-     * Default is `false`.
-     */
-    forceRemote?: boolean,
-
-    /**
-     * (Only takes effect when `forceRemote=true`)
-     * If true, try to parse value to nearest possible primitive data type.
-     * If false, always return string. Default is `true`. Set to `false` to save some performance.
-     * Default is `true`.
-     */
-    parseType?: boolean,
-
-    /**
-     * If true, the key is not prepended with service slug, so we can
-     * get value set by other CacheProvider instances in other services.
-     * Default is `false`.
-     */
-    isGlobal?: boolean,
-}
-
 /**
  * Provides methods to read and write data to cache.
  */
-export class CacheProvider {
+export class RedisCacheProvider implements ICacheProvider {
 
     private _engine: RedisClient
     private _engineSub: RedisClient
-    private _localCache: { [x: string]: PrimitiveType | PrimitiveFlatJson }
+    private _localCache: { [x: string]: PrimitiveType | object }
     private _cacheLocks: { [x: string]: CacheLockChain }
     private _keyRegrex: RegExp
 
@@ -216,7 +157,7 @@ export class CacheProvider {
      * Retrieves an object from cache.
      * @param {string} key The key to look up.
      */
-    public getObject(key: string, opts: CacheGetOptions = {}): Promise<Maybe<PrimitiveFlatJson>> {
+    public getObject(key: string, opts: CacheGetOptions = {}): Promise<Maybe<object>> {
         Guard.assertArgDefined('key', key)
         key = opts.isGlobal ? key : this._realKey(key)
         const parseType = (opts.parseType != null) ? opts.parseType : true
@@ -268,7 +209,7 @@ export class CacheProvider {
     /**
      * Saves an array to cache.
      * @param {string} key The key for later look up.
-     * @param {PrimitiveType[] | PrimitiveFlatJson[] } arr Array of any type to save.
+     * @param {PrimitiveType[] | object[] } arr Array of any type to save.
      */
     public setArray(key: string, arr: any[], opts: CacheSetOptions = {}): Promise<void> {
         Guard.assertArgDefined('key', key)
@@ -282,9 +223,9 @@ export class CacheProvider {
     /**
      * Saves an object to cache.
      * @param {string} key The key for later look up.
-     * @param {PrimitiveFlatJson} value Object value to save.
+     * @param {object} value Object value to save.
      */
-    public async setObject(key: string, value: PrimitiveFlatJson, opts: CacheSetOptions = {}): Promise<void> {
+    public async setObject(key: string, value: object, opts: CacheSetOptions = {}): Promise<void> {
         Guard.assertArgDefined('key', key)
         Guard.assertArgDefined('value', value)
         let multi: MultiAsync

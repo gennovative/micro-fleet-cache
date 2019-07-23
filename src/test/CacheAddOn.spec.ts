@@ -3,7 +3,7 @@ import * as spies from 'chai-spies'
 import { DependencyContainer, IConfigurationProvider, Maybe,
     constants } from '@micro-fleet/common'
 
-import { CacheAddOn, CacheProvider, Types as T } from '../app'
+import { CacheAddOn, RedisCacheProvider, Types as T } from '../app'
 
 
 chai.use(spies)
@@ -20,6 +20,7 @@ enum Mode {
 
 class MockConfigAddOn implements IConfigurationProvider {
     public readonly name: string = 'MockConfigAddOn'
+    public configFilePath: string
 
     constructor(private _mode: Mode) {
 
@@ -160,7 +161,7 @@ describe('CacheAddOn', function () {
             await cacheAddOn.init()
 
             // Assert
-            const cacheProvider = depContainer.resolve<CacheProvider>(T.CACHE_PROVIDER)
+            const cacheProvider = depContainer.resolve<RedisCacheProvider>(T.CACHE_PROVIDER)
             expect(cacheProvider['_options'].single).to.exist
             expect(cacheProvider['_options'].single.host).to.equal('localhost')
             expect(cacheProvider['_options'].single.port).to.equal(6379)

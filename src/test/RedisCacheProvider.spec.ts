@@ -1,8 +1,8 @@
 import { expect } from 'chai'
 import * as redis from 'redis'
-import { Maybe, InvalidArgumentException } from '@micro-fleet/common'
+import { Maybe, InvalidArgumentException, PrimitiveType } from '@micro-fleet/common'
 
-import { CacheProvider, CacheLevel } from '../app'
+import { RedisCacheProvider, CacheLevel } from '../app'
 
 
 const FIRST_CACHE = 'firstcache',
@@ -11,14 +11,14 @@ const FIRST_CACHE = 'firstcache',
     KEY = 'TESTKEY',
     NON_EXIST_KEY = 'BLANK'
 
-let globalCache: CacheProvider
+let globalCache: RedisCacheProvider
 
 describe('CacheProvider (single)', function () {
     this.timeout(5000)
     // this.timeout(60000)
 
     beforeEach(() => {
-        globalCache = new CacheProvider({
+        globalCache = new RedisCacheProvider({
             name: FIRST_CACHE,
             single: {
                 host: 'localhost',
@@ -35,7 +35,7 @@ describe('CacheProvider (single)', function () {
     describe('constructor', () => {
         it('should use local cache only if no option is provided', () => {
             // Act
-            const cache = new CacheProvider()
+            const cache = new RedisCacheProvider()
 
             // Assert
             expect(cache['_localCache']).to.exist
@@ -86,7 +86,7 @@ describe('CacheProvider (single)', function () {
 
         it('Should default to save a value locally only if no cache service is provided', async () => {
             // Arrange
-            const cache = new CacheProvider({
+            const cache = new RedisCacheProvider({
                     name: LOCAL_CACHE,
                     /* No remote service */
                 })
@@ -242,7 +242,7 @@ describe('CacheProvider (single)', function () {
             })
 
             // Assert: Remote value exists
-            const anotherCache = new CacheProvider({
+            const anotherCache = new RedisCacheProvider({
                 name: SECOND_CACHE,
                 single: {
                     host: 'localhost',
@@ -282,7 +282,7 @@ describe('CacheProvider (single)', function () {
         it('Should get string value (remote) from another cache provider instance', async () => {
             // Arrange
             const value = 'a test string'
-            const anotherCache = new CacheProvider({
+            const anotherCache = new RedisCacheProvider({
                 name: FIRST_CACHE,
                 single: {
                     host: 'localhost',
@@ -373,7 +373,7 @@ describe('CacheProvider (single)', function () {
 
         it('Should get value locally if no cache service is provided', async () => {
             // Arrange
-            const cache = new CacheProvider({
+            const cache = new RedisCacheProvider({
                     name: LOCAL_CACHE,
                     /* No remote service */
                 }),
@@ -401,7 +401,7 @@ describe('CacheProvider (single)', function () {
 
         it('Should return empty Maybe if not found (local)', async () => {
             // Arrange
-            const localCache = new CacheProvider({
+            const localCache = new RedisCacheProvider({
                 name: LOCAL_CACHE,
                 /* No remote service */
             })
@@ -479,7 +479,7 @@ describe('CacheProvider (single)', function () {
             })
 
             // Assert: Remote value exists
-            const anotherCache = new CacheProvider({
+            const anotherCache = new RedisCacheProvider({
                 name: SECOND_CACHE,
                 single: {
                     host: 'localhost',
@@ -517,7 +517,7 @@ describe('CacheProvider (single)', function () {
         it('Should get a primitive array from another cache provider instance', async () => {
             // Arrange
             const arr = [1, '2', false]
-            const anotherCache = new CacheProvider({
+            const anotherCache = new RedisCacheProvider({
                 name: FIRST_CACHE,
                 single: {
                     host: 'localhost',
@@ -563,7 +563,7 @@ describe('CacheProvider (single)', function () {
 
         it('Should get value locally if no cache service is provided', async () => {
             // Arrange
-            const cache = new CacheProvider({
+            const cache = new RedisCacheProvider({
                     name: LOCAL_CACHE,
                     /* No remote service */
                 }),
@@ -590,7 +590,7 @@ describe('CacheProvider (single)', function () {
 
         it('Should return empty Maybe if not found (local)', async () => {
             // Arrange
-            const localCache = new CacheProvider({
+            const localCache = new RedisCacheProvider({
                 name: LOCAL_CACHE,
                 /* No remote service */
             })
@@ -655,7 +655,7 @@ describe('CacheProvider (single)', function () {
 
         it('Should default to save an object locally only if no cache service is provided', async () => {
             // Arrange
-            const cache = new CacheProvider({
+            const cache = new RedisCacheProvider({
                     name: LOCAL_CACHE,
                     /* No remote service */
                 }),
@@ -804,7 +804,7 @@ describe('CacheProvider (single)', function () {
             })
 
             // Assert: Remote value exists
-            const anotherCache = new CacheProvider({
+            const anotherCache = new RedisCacheProvider({
                 name: SECOND_CACHE,
                 single: {
                     host: 'localhost',
@@ -836,7 +836,7 @@ describe('CacheProvider (single)', function () {
             await globalCache.setObject(KEY, obj)
 
             // Act
-            const refetch: Maybe<PrimitiveFlatJson> = await globalCache.getObject(KEY, {
+            const refetch: Maybe<object> = await globalCache.getObject(KEY, {
                 forceRemote: true,
                 parseType: false,
             })
@@ -857,7 +857,7 @@ describe('CacheProvider (single)', function () {
                     age: 55,
                     alive: true,
                 }
-            const anotherCache = new CacheProvider({
+            const anotherCache = new RedisCacheProvider({
                 name: FIRST_CACHE,
                 single: {
                     host: 'localhost',
@@ -867,7 +867,7 @@ describe('CacheProvider (single)', function () {
                 await anotherCache.setObject(KEY, obj)
 
                 // Act
-                const refetch: Maybe<PrimitiveFlatJson> = await globalCache.getObject(KEY, {
+                const refetch: Maybe<object> = await globalCache.getObject(KEY, {
                     forceRemote: true,
                     parseType: false,
                 })
@@ -895,7 +895,7 @@ describe('CacheProvider (single)', function () {
             await globalCache.setObject(KEY, obj)
 
             // Act
-            const refetch: Maybe<PrimitiveFlatJson> = await globalCache.getObject(KEY, {
+            const refetch: Maybe<object> = await globalCache.getObject(KEY, {
                 forceRemote: true,
                 parseType: true,
             })
@@ -907,7 +907,7 @@ describe('CacheProvider (single)', function () {
 
         it('Should get value locally if no cache service is provided', async () => {
             // Arrange
-            const cache = new CacheProvider({
+            const cache = new RedisCacheProvider({
                     name: LOCAL_CACHE,
                     /* No remote service */
                 }),
@@ -919,7 +919,7 @@ describe('CacheProvider (single)', function () {
             cache['_localCache'][`${LOCAL_CACHE}::${KEY}`] = obj
 
             // Act
-            const refetch: Maybe<PrimitiveFlatJson> = await cache.getObject(KEY)
+            const refetch: Maybe<object> = await cache.getObject(KEY)
 
             // Assert
             expect(refetch.isJust).to.be.true
@@ -928,7 +928,7 @@ describe('CacheProvider (single)', function () {
 
         it('Should return empty Maybe if not found', async () => {
             // Act
-            const refetch: Maybe<PrimitiveFlatJson> = await globalCache.getObject(NON_EXIST_KEY)
+            const refetch: Maybe<object> = await globalCache.getObject(NON_EXIST_KEY)
 
             // Assert
             expect(refetch.isJust).to.be.false
