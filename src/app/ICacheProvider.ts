@@ -75,6 +75,27 @@ export type CacheGetOptions = {
     isGlobal?: boolean,
 }
 
+export type CacheDelOptions = {
+    /**
+     * If true, the key is not prepended with service slug, so we can
+     * get value set by other CacheProvider instances in other services.
+     *
+     * Default is `false`.
+     */
+    isGlobal?: boolean,
+
+    /**
+     * If false, the exact key is matched to delete single record.
+     *
+     * If true, the key is a pattern to delete multiple records,
+     * NOTE that in this case option `isGlobal` is ignored.
+     * You have to deal with the prepended service slug YOURSELF.
+     *
+     * Default is `false`.
+     */
+    isPattern?: boolean,
+}
+
 /**
  * Provides methods to read and write data to cache.
  */
@@ -88,7 +109,7 @@ export interface ICacheProvider {
     /**
      * Removes a key from cache.
      */
-    delete(key: string, isGlobal?: boolean): Promise<void>
+    delete(key: string, opts?: CacheDelOptions): Promise<void>
 
     /**
      * Retrieves a string or number or boolean from cache.

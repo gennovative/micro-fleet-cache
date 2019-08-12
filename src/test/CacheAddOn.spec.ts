@@ -33,6 +33,7 @@ class MockConfigAddOn implements IConfigurationProvider {
     public get(key: string): Maybe<number | boolean | string | any[]> {
         if (this._mode === Mode.LocalCache) {
             switch (key) {
+                case C.CACHE_NUM_CONN: return Maybe.Just(0)
                 case SvS.SERVICE_SLUG: return Maybe.Just('TestCacheSvc')
                 default: return Maybe.Nothing()
             }
@@ -125,7 +126,7 @@ describe('CacheAddOn', function () {
 
             // Assert
             expect(exception).to.exist
-            expect(exception.message).to.equal('SERVICE_SLUG_REQUIRED')
+            expect(exception.message).to.equal('The setting SERVICE_SLUG is required')
             expect(cacheAddOn['_cacheProvider']).not.to.exist
         })
 

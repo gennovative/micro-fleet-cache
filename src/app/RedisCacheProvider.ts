@@ -5,7 +5,7 @@ redis.Multi.prototype.execAsync = util.promisify(redis.Multi.prototype.exec)
 import { Maybe, Guard, PrimitiveType } from '@micro-fleet/common'
 
 import { ICacheProvider, CacheGetOptions, CacheSetOptions,
-    CacheLevel, CacheConnectionDetail } from './ICacheProvider'
+    CacheLevel, CacheConnectionDetail, CacheDelOptions } from './ICacheProvider'
 
 
 type CacheLockChain = Promise<void>[]
@@ -17,6 +17,8 @@ interface RedisClient extends redis.RedisClient {
 interface MultiAsync extends redis.Multi {
     [x: string]: any
 }
+
+type ScanResult = { cursor: string, keys: string[] }
 
 const EVENT_PREFIX = '__keyspace@0__:'
 
@@ -97,14 +99,67 @@ export class RedisCacheProvider implements ICacheProvider {
     }
 
     /**
-     * Removes a key from cache.
+     * Removes an exact key or multiple matched keys from cache.
      */
-    public async delete(key: string, isGlobal: boolean = false): Promise<void> {
-        key = isGlobal ? key : this._realKey(key)
+    public async delete(key: string, opts: CacheDelOptions = {}): Promise<void> {
+        if (opts.isPattern) {
+            return this._deletePattern(key)
+        }
+        key = opts.isGlobal ? key : this._realKey(key)
         Guard.assertArgDefined('key', key)
         this._deleteLocal(key)
         await this._syncOff(key)
         await this._engine.delAsync(key)
+    }
+
+    private async _deletePattern(pattern: string): Promise<void> {
+        this._deleteLocalPattern(pattern)
+        if (!this._engine) { return }
+
+        // Scan all remote keys
+        // Delete all of them
+
+        const END_CURSOR = '0'
+        let result: ScanResult = {
+            cursor: '',
+            keys: [],
+        }
+        const keySet = new Set<string>()
+        do {
+            result = await this._scanRemoteKeys(pattern, result.cursor)
+            // Redis SCAN may return duplicate items
+            // Adding to a Set to avoid duplication
+            result.keys.forEach(k => keySet.add(k))
+        } while (result.cursor != END_CURSOR)
+
+        return (result.keys.length > 0)
+            ? this._engine.delAsync(...keySet)
+            : Promise.resolve()
+    }
+
+    private _deleteLocalPattern(pattern: string): void {
+        // Replace with Regexp syntax
+        pattern = pattern.replace(/\*/g, '(.*)').replace(/\?/g, '(.?)')
+        const regex = new RegExp(`^${pattern}$`)
+        this._localCache = Object.entries(this._localCache)
+            .reduce((prev, [key, val]) => {
+                if (!key.match(regex)) {
+                    prev[key] = val
+                }
+                return prev
+            }, {})
+    }
+
+    /**
+     * @see https://redis.io/commands/scan
+     */
+    private async _scanRemoteKeys(pattern: string, fromCursor: string): Promise<ScanResult> {
+        const ITEMS_PER_ITERATION = 10
+        const result: [string, string[]] = await this._engine.scanAsync(fromCursor, 'MATCH', pattern, 'COUNT', ITEMS_PER_ITERATION)
+        return {
+            cursor: result[0],
+            keys: result[1],
+        }
     }
 
     /**
@@ -168,7 +223,11 @@ export class RedisCacheProvider implements ICacheProvider {
         else if (this._localCache.hasOwnProperty(key)) {
             return Promise.resolve(Maybe.Just<any>(this._localCache[key]))
         }
-        return this._fetchObject(key, parseType)
+        else if (this._hasEngine) {
+            return this._fetchObject(key, parseType)
+        }
+
+        return Promise.resolve(Maybe.Nothing())
     }
 
     /**
@@ -418,7 +477,9 @@ export class RedisCacheProvider implements ICacheProvider {
     }
 
     private _promisify(prototype: any): void {
-        for (const fn of ['del', 'hmset', 'hgetall', 'get', 'set', 'config', 'quit', 'subscribe', 'unsubscribe']) {
+        const FN = ['del', 'hmset', 'hgetall', 'get', 'set',
+            'config', 'quit', 'subscribe', 'unsubscribe', 'scan']
+        for (const fn of FN) {
             prototype[`${fn}Async`] = util.promisify(prototype[fn])
         }
         prototype['__promisified'] = true

@@ -32,34 +32,19 @@ export class CacheAddOn implements IServiceAddOn {
      * @see IServiceAddOn.init
      */
     public init(): Promise<void> {
-        return (this._configProvider.get(S.SERVICE_SLUG) as Maybe<string>)
-            .chain(svcSlug => {
-                return this._buildConnDetails()
-                    .map<[string, CacheConnectionDetail[]]>(details => [svcSlug, details])
-                    .mapElse(() => [svcSlug, null])
-            })
-            .map(([svcSlug, details]) => {
-                const opts: CacheProviderConstructorOpts = {
-                    name: svcSlug as string,
-                }
+        const slugMaybe = (this._configProvider.get(S.SERVICE_SLUG) as Maybe<string>)
+        if (slugMaybe.isNothing) {
+            return Promise.reject(new CriticalException('The setting SERVICE_SLUG is required'))
+        }
 
-                if (details && details.length > 1) {
-                    opts.cluster = details
-                }
-                else if (details) {
-                    opts.single = details[0]
-                }
-
-                return Promise.resolve(opts)
-            })
-            .mapElse(
-                () => Promise.reject(new CriticalException('SERVICE_SLUG_REQUIRED'))
-            )
-            .value
-            .then((opts) => {
-                this._cacheProvider = new RedisCacheProvider(opts)
-                this._depContainer.bindConstant<RedisCacheProvider>(T.CACHE_PROVIDER, this._cacheProvider)
-            })
+        const nConnMaybe = (this._configProvider.get(C.CACHE_NUM_CONN) as Maybe<number>)
+        if (nConnMaybe.isNothing) {
+            return Promise.reject(new CriticalException('The setting CACHE_NUM_CONN is required'))
+        }
+        const opts = this._buildConnOptions(slugMaybe.value, nConnMaybe.value)
+        this._cacheProvider = new RedisCacheProvider(opts)
+        this._depContainer.bindConstant<RedisCacheProvider>(T.CACHE_PROVIDER, this._cacheProvider)
+        return Promise.resolve()
     }
 
     /**
@@ -76,57 +61,54 @@ export class CacheAddOn implements IServiceAddOn {
         return (this._cacheProvider) ? this._cacheProvider.dispose() : Promise.resolve()
     }
 
-    private _buildConnDetails(): Maybe<CacheConnectionDetail[]> {
-        return (this._configProvider.get(C.CACHE_NUM_CONN) as Maybe<number>)
-            .chain((nConn) => {
-                const hosts: string[] = this._getHosts(nConn)
-                const ports: number[] = this._getPorts(nConn)
-                const details: CacheConnectionDetail[] = []
+    private _buildConnOptions(svcSlug: string, nConn: number): CacheProviderConstructorOpts {
+        const opts: CacheProviderConstructorOpts = {
+            name: svcSlug,
+        }
+        if (nConn === 0) { return opts }
 
-                for (let i = 0; i < nConn; ++i) {
-                    details.push({
-                        host: hosts[i],
-                        port: ports[i],
-                    })
-                }
+        const hosts: string[] = this._getHosts(nConn)
+        const ports: number[] = this._getPorts(nConn)
+        const details: CacheConnectionDetail[] = []
 
-                if (details.length) {
-                    debug(`Cache with ${details.length} connections`)
-                    return Maybe.Just(details)
-                }
-                else {
-                    debug('No cache connection')
-                    return Maybe.Nothing()
-                }
+        for (let i = 0; i < nConn; ++i) {
+            details.push({
+                host: hosts[i],
+                port: ports[i],
             })
+        }
+
+        debug(`Cache with ${details.length} connections`)
+
+        if (details.length > 1) {
+            opts.cluster = details
+        }
+        else {
+            opts.single = details[0]
+        }
+        return opts
     }
 
     private _getHosts(nConn: number): string[] {
-        return this._configProvider.get(C.CACHE_HOST)
-            .map((value) => {
-                // If number of connection is greater than number of given host addresses,
-                // we use default address for the rest.
-                if (Array.isArray(value) && value.length != nConn) {
-                    return this._padArray(value, nConn, DEFAULT_HOST) as string[]
-                }
-                // If there is only one address as string, we use it for all connections
-                return this._padArray([], nConn, value) as string[]
-            })
-            .value
+        const address = this._configProvider.get(C.CACHE_HOST).tryGetValue(DEFAULT_HOST)
+        // If number of connection is greater than number of given host addresses,
+        // we use default address for the rest.
+        if (Array.isArray(address) && address.length != nConn) {
+            return this._padArray(address, nConn, DEFAULT_HOST) as string[]
+        }
+        // If there is only one address as string, we use it for all connections
+        return this._padArray([], nConn, address) as string[]
     }
 
     private _getPorts(nConn: number): number[] {
-        return this._configProvider.get(C.CACHE_PORT)
-            .map((value) => {
-                // If number of connection is greater than number of given ports,
-                // we use default port for the rest.
-                if (Array.isArray(value) && value.length != nConn) {
-                    return this._padArray(value, nConn, DEFAULT_PORT) as number[]
-                }
-                // If there is only one address as number, we use it for all connections
-                return this._padArray([], nConn, value) as number[]
-            })
-            .value
+        const port = this._configProvider.get(C.CACHE_PORT).tryGetValue(DEFAULT_PORT)
+        // If number of connection is greater than number of given ports,
+        // we use default port for the rest.
+        if (Array.isArray(port) && port.length != nConn) {
+            return this._padArray(port, nConn, DEFAULT_PORT) as number[]
+        }
+        // If there is only one port as number, we use it for all connections
+        return this._padArray([], nConn, port) as number[]
     }
 
     /**

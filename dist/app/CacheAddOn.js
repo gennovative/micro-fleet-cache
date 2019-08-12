@@ -32,30 +32,18 @@ let CacheAddOn = class CacheAddOn {
      * @see IServiceAddOn.init
      */
     init() {
-        return this._configProvider.get(S.SERVICE_SLUG)
-            .chain(svcSlug => {
-            return this._buildConnDetails()
-                .map(details => [svcSlug, details])
-                .mapElse(() => [svcSlug, null]);
-        })
-            .map(([svcSlug, details]) => {
-            const opts = {
-                name: svcSlug,
-            };
-            if (details && details.length > 1) {
-                opts.cluster = details;
-            }
-            else if (details) {
-                opts.single = details[0];
-            }
-            return Promise.resolve(opts);
-        })
-            .mapElse(() => Promise.reject(new common_1.CriticalException('SERVICE_SLUG_REQUIRED')))
-            .value
-            .then((opts) => {
-            this._cacheProvider = new RedisCacheProvider_1.RedisCacheProvider(opts);
-            this._depContainer.bindConstant(Types_1.Types.CACHE_PROVIDER, this._cacheProvider);
-        });
+        const slugMaybe = this._configProvider.get(S.SERVICE_SLUG);
+        if (slugMaybe.isNothing) {
+            return Promise.reject(new common_1.CriticalException('The setting SERVICE_SLUG is required'));
+        }
+        const nConnMaybe = this._configProvider.get(C.CACHE_NUM_CONN);
+        if (nConnMaybe.isNothing) {
+            return Promise.reject(new common_1.CriticalException('The setting CACHE_NUM_CONN is required'));
+        }
+        const opts = this._buildConnOptions(slugMaybe.value, nConnMaybe.value);
+        this._cacheProvider = new RedisCacheProvider_1.RedisCacheProvider(opts);
+        this._depContainer.bindConstant(Types_1.Types.CACHE_PROVIDER, this._cacheProvider);
+        return Promise.resolve();
     }
     /**
      * @see IServiceAddOn.deadLetter
@@ -69,53 +57,50 @@ let CacheAddOn = class CacheAddOn {
     dispose() {
         return (this._cacheProvider) ? this._cacheProvider.dispose() : Promise.resolve();
     }
-    _buildConnDetails() {
-        return this._configProvider.get(C.CACHE_NUM_CONN)
-            .chain((nConn) => {
-            const hosts = this._getHosts(nConn);
-            const ports = this._getPorts(nConn);
-            const details = [];
-            for (let i = 0; i < nConn; ++i) {
-                details.push({
-                    host: hosts[i],
-                    port: ports[i],
-                });
-            }
-            if (details.length) {
-                debug(`Cache with ${details.length} connections`);
-                return common_1.Maybe.Just(details);
-            }
-            else {
-                debug('No cache connection');
-                return common_1.Maybe.Nothing();
-            }
-        });
+    _buildConnOptions(svcSlug, nConn) {
+        const opts = {
+            name: svcSlug,
+        };
+        if (nConn === 0) {
+            return opts;
+        }
+        const hosts = this._getHosts(nConn);
+        const ports = this._getPorts(nConn);
+        const details = [];
+        for (let i = 0; i < nConn; ++i) {
+            details.push({
+                host: hosts[i],
+                port: ports[i],
+            });
+        }
+        debug(`Cache with ${details.length} connections`);
+        if (details.length > 1) {
+            opts.cluster = details;
+        }
+        else {
+            opts.single = details[0];
+        }
+        return opts;
     }
     _getHosts(nConn) {
-        return this._configProvider.get(C.CACHE_HOST)
-            .map((value) => {
-            // If number of connection is greater than number of given host addresses,
-            // we use default address for the rest.
-            if (Array.isArray(value) && value.length != nConn) {
-                return this._padArray(value, nConn, DEFAULT_HOST);
-            }
-            // If there is only one address as string, we use it for all connections
-            return this._padArray([], nConn, value);
-        })
-            .value;
+        const address = this._configProvider.get(C.CACHE_HOST).tryGetValue(DEFAULT_HOST);
+        // If number of connection is greater than number of given host addresses,
+        // we use default address for the rest.
+        if (Array.isArray(address) && address.length != nConn) {
+            return this._padArray(address, nConn, DEFAULT_HOST);
+        }
+        // If there is only one address as string, we use it for all connections
+        return this._padArray([], nConn, address);
     }
     _getPorts(nConn) {
-        return this._configProvider.get(C.CACHE_PORT)
-            .map((value) => {
-            // If number of connection is greater than number of given ports,
-            // we use default port for the rest.
-            if (Array.isArray(value) && value.length != nConn) {
-                return this._padArray(value, nConn, DEFAULT_PORT);
-            }
-            // If there is only one address as number, we use it for all connections
-            return this._padArray([], nConn, value);
-        })
-            .value;
+        const port = this._configProvider.get(C.CACHE_PORT).tryGetValue(DEFAULT_PORT);
+        // If number of connection is greater than number of given ports,
+        // we use default port for the rest.
+        if (Array.isArray(port) && port.length != nConn) {
+            return this._padArray(port, nConn, DEFAULT_PORT);
+        }
+        // If there is only one port as number, we use it for all connections
+        return this._padArray([], nConn, port);
     }
     /**
      * Keeps appending `value` to `arr` until the array reaches specified `newLength`.

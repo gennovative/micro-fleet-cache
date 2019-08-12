@@ -1,3 +1,4 @@
+export * from './cacheable'
 export * from './CacheAddOn'
 export * from './RedisCacheProvider'
 export * from './CacheSettings'
