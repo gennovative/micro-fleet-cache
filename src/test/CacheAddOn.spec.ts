@@ -8,7 +8,7 @@ import { CacheAddOn, RedisCacheProvider, Types as T } from '../app'
 
 chai.use(spies)
 const expect = chai.expect
-const { CacheSettingKeys: C, SvcSettingKeys: SvS } = constants
+const { Cache: C, Service: SvS } = constants
 
 enum Mode {
     NoServiceSlug = 'noSlug',

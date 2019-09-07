@@ -2,7 +2,7 @@
 const debug: debug.IDebugger = require('debug')('mcft:cache:CacheAddOn')
 
 
-import { injectable, inject, Guard, IDependencyContainer, Types as CmT, Maybe,
+import { Guard, IDependencyContainer, Types as CmT, Maybe, decorators as d,
     IConfigurationProvider, CriticalException, constants, IServiceAddOn} from '@micro-fleet/common'
 
 import { RedisCacheProvider, CacheProviderConstructorOpts } from './RedisCacheProvider'
@@ -10,19 +10,19 @@ import { Types as T } from './Types'
 import { CacheConnectionDetail } from './ICacheProvider'
 
 
-const { SvcSettingKeys: S, CacheSettingKeys: C } = constants
+const { Service: S, Cache: C } = constants
 const DEFAULT_HOST = 'localhost'
 const DEFAULT_PORT = 6379
 
-@injectable()
+@d.injectable()
 export class CacheAddOn implements IServiceAddOn {
     public readonly name: string = 'CacheAddOn'
 
     private _cacheProvider: RedisCacheProvider
 
     constructor(
-        @inject(CmT.CONFIG_PROVIDER) private _configProvider: IConfigurationProvider,
-        @inject(CmT.DEPENDENCY_CONTAINER) private _depContainer: IDependencyContainer,
+        @d.inject(CmT.CONFIG_PROVIDER) private _configProvider: IConfigurationProvider,
+        @d.inject(CmT.DEPENDENCY_CONTAINER) private _depContainer: IDependencyContainer,
     ) {
         Guard.assertArgDefined('_configProvider', _configProvider)
         Guard.assertArgDefined('_depContainer', _depContainer)

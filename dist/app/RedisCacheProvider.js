@@ -366,7 +366,7 @@ class RedisCacheProvider {
             // Try parsing to number or boolean
             return JSON.parse(val);
         }
-        catch (_a) {
+        catch {
             return val;
         }
     }

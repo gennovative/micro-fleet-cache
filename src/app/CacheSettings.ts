@@ -1,7 +1,7 @@
 import { SettingItem, SettingItemDataType, constants } from '@micro-fleet/common'
 import { CacheConnectionDetail } from './ICacheProvider'
 
-const { CacheSettingKeys: S } = constants
+const { Cache: C } = constants
 
 /**
  * Represents an array of cache settings.
@@ -13,11 +13,11 @@ export class CacheSettings
 
     constructor() {
         super()
-        this._numSetting = SettingItem.translator.whole({
-            name: S.CACHE_NUM_CONN,
+        this._numSetting = SettingItem.from({
+            name: C.CACHE_NUM_CONN,
             dataType: SettingItemDataType.Number,
             value: '0',
-        }) as SettingItem
+        })
 
         this.push(this._numSetting)
     }
@@ -36,16 +36,16 @@ export class CacheSettings
     public pushServer(detail: CacheConnectionDetail) {
         const newIdx = parseInt(this._numSetting.value)
 
-        this.push(SettingItem.translator.whole({
-                name: S.CACHE_HOST + newIdx,
+        this.push(SettingItem.from({
+                name: C.CACHE_HOST + newIdx,
                 dataType: SettingItemDataType.String,
                 value: detail.host,
-            }) as SettingItem)
-        this.push(SettingItem.translator.whole({
-                name: S.CACHE_PORT + newIdx,
+            }))
+        this.push(SettingItem.from({
+                name: C.CACHE_PORT + newIdx,
                 dataType: SettingItemDataType.Number,
                 value: detail.port + '',
-            }) as SettingItem)
+            }))
 
         const setting: any = this._numSetting
         setting.value = (newIdx + 1) + ''

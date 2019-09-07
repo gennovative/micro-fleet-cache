@@ -1,15 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const common_1 = require("@micro-fleet/common");
-const { CacheSettingKeys: S } = common_1.constants;
+const { Cache: C } = common_1.constants;
 /**
  * Represents an array of cache settings.
  */
 class CacheSettings extends Array {
     constructor() {
         super();
-        this._numSetting = common_1.SettingItem.translator.whole({
-            name: S.CACHE_NUM_CONN,
+        this._numSetting = common_1.SettingItem.from({
+            name: C.CACHE_NUM_CONN,
             dataType: common_1.SettingItemDataType.Number,
             value: '0',
         });
@@ -26,13 +26,13 @@ class CacheSettings extends Array {
      */
     pushServer(detail) {
         const newIdx = parseInt(this._numSetting.value);
-        this.push(common_1.SettingItem.translator.whole({
-            name: S.CACHE_HOST + newIdx,
+        this.push(common_1.SettingItem.from({
+            name: C.CACHE_HOST + newIdx,
             dataType: common_1.SettingItemDataType.String,
             value: detail.host,
         }));
-        this.push(common_1.SettingItem.translator.whole({
-            name: S.CACHE_PORT + newIdx,
+        this.push(common_1.SettingItem.from({
+            name: C.CACHE_PORT + newIdx,
             dataType: common_1.SettingItemDataType.Number,
             value: detail.port + '',
         }));

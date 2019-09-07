@@ -17,7 +17,7 @@ const debug = require('debug')('mcft:cache:CacheAddOn');
 const common_1 = require("@micro-fleet/common");
 const RedisCacheProvider_1 = require("./RedisCacheProvider");
 const Types_1 = require("./Types");
-const { SvcSettingKeys: S, CacheSettingKeys: C } = common_1.constants;
+const { Service: S, Cache: C } = common_1.constants;
 const DEFAULT_HOST = 'localhost';
 const DEFAULT_PORT = 6379;
 let CacheAddOn = class CacheAddOn {
@@ -115,9 +115,9 @@ let CacheAddOn = class CacheAddOn {
     }
 };
 CacheAddOn = __decorate([
-    common_1.injectable(),
-    __param(0, common_1.inject(common_1.Types.CONFIG_PROVIDER)),
-    __param(1, common_1.inject(common_1.Types.DEPENDENCY_CONTAINER)),
+    common_1.decorators.injectable(),
+    __param(0, common_1.decorators.inject(common_1.Types.CONFIG_PROVIDER)),
+    __param(1, common_1.decorators.inject(common_1.Types.DEPENDENCY_CONTAINER)),
     __metadata("design:paramtypes", [Object, Object])
 ], CacheAddOn);
 exports.CacheAddOn = CacheAddOn;

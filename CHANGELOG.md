@@ -1,5 +1,9 @@
 ## VERSIONS
 
+
+### 2.3.0
+- Sync version with other packages.
+
 ### 1.1.8
 - Upgraded to new version of `@micro-fleet/common` with `Maybe`'s breaking change
 

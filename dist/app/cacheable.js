@@ -64,7 +64,7 @@ exports.cacheable = function (keyOrOptions) {
                     await cacheProd.setPrimitive(cacheKey, toCache, setOpts);
                 }
             }
-            catch (_a) {
+            catch {
                 return result;
             }
             debug('From original invocation');
