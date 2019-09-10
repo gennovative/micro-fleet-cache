@@ -10,10 +10,12 @@ import { ICacheProvider, CacheGetOptions, CacheSetOptions,
 
 type CacheLockChain = Promise<void>[]
 
+// tslint:disable-next-line: interface-name
 interface RedisClient extends redis.RedisClient {
     [x: string]: any
 }
 
+// tslint:disable-next-line: interface-name
 interface MultiAsync extends redis.Multi {
     [x: string]: any
 }
@@ -437,6 +439,8 @@ export class RedisCacheProvider implements ICacheProvider {
                         break
                     case 'del':
                         this._deleteLocal(affectedKey)
+                        break
+                    default:
                         break
                 }
                 this._releaseKey(key)

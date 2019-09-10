@@ -344,6 +344,8 @@ class RedisCacheProvider {
                     case 'del':
                         this._deleteLocal(affectedKey);
                         break;
+                    default:
+                        break;
                 }
                 this._releaseKey(key);
             });

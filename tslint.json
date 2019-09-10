@@ -1,6 +1,7 @@
 {
     "rules": {
         "arrow-return-shorthand": true,
+        "ban-ts-ignore": true,
         "callable-types": true,
         "class-name": true,
         "comment-format": [
@@ -13,37 +14,56 @@
             true,
             "spaces"
         ],
+        "interface-name": [
+            true,
+            "always-prefix"
+        ],
         "max-line-length": [
             true,
             140
         ],
         "member-access": true,
         "no-arg": true,
+        "no-async-without-await": true,
         "no-construct": true,
         "no-duplicate-super": true,
         "no-empty": true,
         "no-empty-interface": false,
         "no-eval": true,
+        "no-floating-promises": true,
         "no-misused-new": true,
         "no-shadowed-variable": true,
         "no-string-throw": true,
+        "no-tautology-expression": true,
         "no-trailing-whitespace": true,
         "no-unsafe-finally": true,
         "no-var-keyword": true,
+        "number-literal-format": true,
         "one-line": [
             true,
             "check-open-brace",
             "check-whitespace"
         ],
         "prefer-const": true,
+        "prefer-method-signature": true,
         "quotemark": [
             true,
-            "single"
+            "single",
+            "avoid-escape"
         ],
+        "restrict-plus-operands": true,
         "semicolon": [
             true,
             "never"
         ],
+        "strict-comparisons": [
+            true,
+            {
+                "allow-object-equal-comparison": true,
+                "allow-string-order-comparison": true
+            }
+        ],
+        "switch-default": true,
         "trailing-comma": [
             true,
             {
@@ -71,9 +91,15 @@
             }
         ],
         "unified-signatures": true,
+        "unnecessary-constructor": true,
+        "unnecessary-else": [
+            true,
+            { "allow-else-if": true }
+        ],
         "variable-name": [
             true,
-            "ban-keywords"
+            "ban-keywords",
+            "require-const-for-all-caps"
         ],
         "whitespace": [
             true,

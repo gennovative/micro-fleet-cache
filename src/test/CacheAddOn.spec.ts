@@ -47,6 +47,7 @@ class MockConfigAddOn implements IConfigurationProvider {
                 case C.CACHE_HOST: return Maybe.Just('localhost') // Will be ignored
                 case C.CACHE_PORT: return Maybe.Just(6379) // Will be ignored
                 case SvS.SERVICE_SLUG: return Maybe.Just('TestCacheSvc') // Will be ignored
+                default: return Maybe.Nothing()
             }
         }
         else if (this._mode === Mode.Single) {
@@ -55,6 +56,7 @@ class MockConfigAddOn implements IConfigurationProvider {
                 case C.CACHE_HOST: return Maybe.Just('localhost')
                 case C.CACHE_PORT: return Maybe.Just(6379)
                 case SvS.SERVICE_SLUG: return Maybe.Just('TestCacheSvc')
+                default: return Maybe.Nothing()
             }
         }
         else if (this._mode === Mode.Cluster) {
@@ -63,6 +65,7 @@ class MockConfigAddOn implements IConfigurationProvider {
                 case C.CACHE_HOST: return Maybe.Just(['127.0.0.1'])
                 case C.CACHE_PORT: return Maybe.Just([6379, 6380])
                 case SvS.SERVICE_SLUG: return Maybe.Just('TestCacheSvc')
+                default: return Maybe.Nothing()
             }
         }
         return Maybe.Nothing()

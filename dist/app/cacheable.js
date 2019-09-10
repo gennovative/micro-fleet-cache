@@ -9,7 +9,7 @@ const common_1 = require("@micro-fleet/common");
  * @param {class} FilterClass Filter class whose name must end with "Filter".
  * @param {FilterPriority} priority Filters with greater priority run before ones with less priority.
  */
-exports.cacheable = function (keyOrOptions) {
+function cacheable(keyOrOptions) {
     return function (proto, fnName, propDesc) {
         // proto === TargetClass.prototype
         // fnName === "targetMethodName"
@@ -73,7 +73,8 @@ exports.cacheable = function (keyOrOptions) {
         };
         return propDesc;
     };
-};
+}
+exports.cacheable = cacheable;
 function cacheKeyBuilder(cacheKey, serializedArgs) {
     return `${cacheKey}:${serializedArgs}`;
 }
@@ -118,12 +119,10 @@ function resultSerializer(toCache) {
             'value': serialize(toCache),
         };
     }
-    else {
-        return {
-            'type': '@cache__other',
-            'value': JSON.stringify(toCache),
-        };
-    }
+    return {
+        'type': '@cache__other',
+        'value': JSON.stringify(toCache),
+    };
 }
 exports.resultSerializer = resultSerializer;
 function resultRebuilder(fromCache) {

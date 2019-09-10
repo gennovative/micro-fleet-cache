@@ -45,31 +45,25 @@ export type CacheDecoratorOptions = {
      *
      * As default, the final cache key is: `${cacheKey}:${serializedArgs}`
      */
-    cacheKeyBuilder?: (cacheKey: string, serializedArgs: string) => string,
+    cacheKeyBuilder?(cacheKey: string, serializedArgs: string): string;
 
     /**
      * A function that accepts an array of the arguments of target function,
      * and produces a string to pass to `cacheKeyBuilder`.
      */
-    argsSerializer?: (args: any[]) => string,
+    argsSerializer?(args: any[]): string;
 
     /**
      * A function that accepts the return value of target function,
      * and produces a JSON object or a string to store in cache.
      */
-    resultSerializer?: (toCache: any) => string | object,
+    resultSerializer?(toCache: any): string | object;
 
     /**
      * A function that accepts the value retrieved from cache,
      * and rebuilds it to match the return type of target function.
      */
-    resultRebuilder?: (fromCache: any) => any,
-}
-
-export interface CacheDecorator {
-    (cacheKey: string): Function
-    // tslint:disable-next-line: unified-signatures
-    (options: CacheDecoratorOptions): Function
+    resultRebuilder?(fromCache: any): any;
 }
 
 /**
@@ -77,7 +71,7 @@ export interface CacheDecorator {
  * @param {class} FilterClass Filter class whose name must end with "Filter".
  * @param {FilterPriority} priority Filters with greater priority run before ones with less priority.
  */
-export const cacheable: CacheDecorator = function(keyOrOptions: string | CacheDecoratorOptions): Function {
+export function cacheable(keyOrOptions: string | CacheDecoratorOptions): Function {
     return function (proto: any, fnName: string, propDesc: PropertyDescriptor): PropertyDescriptor {
         // proto === TargetClass.prototype
         // fnName === "targetMethodName"
@@ -199,12 +193,10 @@ export function resultSerializer(toCache: any): string | PrimitiveType[] | objec
             'value': serialize(toCache),
         } as object
     }
-    else {
-        return {
-            'type': '@cache__other',
-            'value': JSON.stringify(toCache),
-        } as object
-    }
+    return {
+        'type': '@cache__other',
+        'value': JSON.stringify(toCache),
+    } as object
 }
 
 export function resultRebuilder(fromCache: any): any {

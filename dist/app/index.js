@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __export(require("./cacheable"));
 __export(require("./CacheAddOn"));
 __export(require("./RedisCacheProvider"));
-__export(require("./CacheSettings"));
+// export * from './CacheSettings'
 __export(require("./ICacheProvider"));
 __export(require("./Types"));
 __export(require("./register-addon"));

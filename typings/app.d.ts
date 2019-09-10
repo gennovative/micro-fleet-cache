@@ -245,25 +245,6 @@ declare module '@micro-fleet/cache/dist/app/CacheAddOn' {
             }
 
 }
-declare module '@micro-fleet/cache/dist/app/CacheSettings' {
-    import { SettingItem } from '@micro-fleet/common';
-    import { CacheConnectionDetail } from '@micro-fleet/cache/dist/app/ICacheProvider';
-    /**
-     * Represents an array of cache settings.
-     */
-    export class CacheSettings extends Array<SettingItem> {
-                constructor();
-        /**
-         * Gets number of connection settings.
-         */
-        readonly total: number;
-        /**
-         * Parses then adds a server detail to setting item array.
-         */
-        pushServer(detail: CacheConnectionDetail): void;
-    }
-
-}
 declare module '@micro-fleet/cache/dist/app/cacheable' {
     import { CacheLevel } from '@micro-fleet/cache';
     import { PrimitiveType } from '@micro-fleet/common';
@@ -302,33 +283,29 @@ declare module '@micro-fleet/cache/dist/app/cacheable' {
          *
          * As default, the final cache key is: `${cacheKey}:${serializedArgs}`
          */
-        cacheKeyBuilder?: (cacheKey: string, serializedArgs: string) => string;
+        cacheKeyBuilder?(cacheKey: string, serializedArgs: string): string;
         /**
          * A function that accepts an array of the arguments of target function,
          * and produces a string to pass to `cacheKeyBuilder`.
          */
-        argsSerializer?: (args: any[]) => string;
+        argsSerializer?(args: any[]): string;
         /**
          * A function that accepts the return value of target function,
          * and produces a JSON object or a string to store in cache.
          */
-        resultSerializer?: (toCache: any) => string | object;
+        resultSerializer?(toCache: any): string | object;
         /**
          * A function that accepts the value retrieved from cache,
          * and rebuilds it to match the return type of target function.
          */
-        resultRebuilder?: (fromCache: any) => any;
+        resultRebuilder?(fromCache: any): any;
     };
-    export interface CacheDecorator {
-        (cacheKey: string): Function;
-        (options: CacheDecoratorOptions): Function;
-    }
     /**
      * Used to add filter to controller class and controller action.
      * @param {class} FilterClass Filter class whose name must end with "Filter".
      * @param {FilterPriority} priority Filters with greater priority run before ones with less priority.
      */
-    export const cacheable: CacheDecorator;
+    export function cacheable(keyOrOptions: string | CacheDecoratorOptions): Function;
     export function cacheKeyBuilder(cacheKey: string, serializedArgs: string): string;
     export function argsSerializer(args: any[]): string;
     export function resultSerializer(toCache: any): string | PrimitiveType[] | object;
@@ -344,7 +321,6 @@ declare module '@micro-fleet/cache' {
     export * from '@micro-fleet/cache/dist/app/cacheable';
     export * from '@micro-fleet/cache/dist/app/CacheAddOn';
     export * from '@micro-fleet/cache/dist/app/RedisCacheProvider';
-    export * from '@micro-fleet/cache/dist/app/CacheSettings';
     export * from '@micro-fleet/cache/dist/app/ICacheProvider';
     export * from '@micro-fleet/cache/dist/app/Types';
     export * from '@micro-fleet/cache/dist/app/register-addon';

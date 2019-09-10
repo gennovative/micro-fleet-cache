@@ -14,6 +14,8 @@ const FIRST_CACHE_NAME = 'firstcache',
 
 let cache: RedisCacheProvider
 
+// tslint:disable: no-floating-promises
+
 describe('CacheProvider (single)', function () {
     this.timeout(5000)
     // this.timeout(60000)
@@ -221,7 +223,7 @@ describe('CacheProvider (single)', function () {
                     client.quit()
                 })
                 .then(() => {
-                    setTimeout(async () => {
+                    setTimeout(() => {
                         // Assert
                         const refetchOne = cache['_localCache'][`${FIRST_CACHE_NAME}::${KEY}`]
                         const refetchTwo = cache['_localCache'][`${FIRST_CACHE_NAME}::${KEY_TWO}`]
@@ -318,7 +320,7 @@ describe('CacheProvider (single)', function () {
             // Assert
             expect(refetch.isJust).to.be.true
             expect(typeof refetch.value).to.equal('string')
-            expect(refetch.value).to.equal(value + '')
+            expect(refetch.value).to.equal(String(value))
         })
 
         it('Should get number value as number if parsing is enabled (remote)', async () => {
@@ -351,7 +353,7 @@ describe('CacheProvider (single)', function () {
 
             // Assert
             expect(refetch.isJust).to.be.true
-            expect(refetch.value).to.equal(value + '')
+            expect(refetch.value).to.equal(String(value))
             expect(typeof refetch.value).to.equal('string')
         })
 
@@ -779,7 +781,7 @@ describe('CacheProvider (single)', function () {
                     client.quit()
                 })
                 .then(() => {
-                    setTimeout(async () => {
+                    setTimeout(() => {
                         // Assert
                         const refetch: any = cache['_localCache'][`${FIRST_CACHE_NAME}::${KEY}`]
                         expect(refetch).to.exist
@@ -846,7 +848,7 @@ describe('CacheProvider (single)', function () {
             expect(refetch.isJust).to.be.true
             const val = refetch.value
             for (const p in val) {
-                expect(val[p]).to.equal(obj[p] + '')
+                expect(val[p]).to.equal(String(obj[p]))
                 expect(typeof val[p]).to.equal('string')
             }
         })
@@ -877,7 +879,7 @@ describe('CacheProvider (single)', function () {
                 expect(refetch.isJust).to.be.true
                 const val = refetch.value
                 for (const p in val) {
-                    expect(val[p]).to.equal(obj[p] + '')
+                    expect(val[p]).to.equal(String(obj[p]))
                     expect(typeof val[p]).to.equal('string')
                 }
             }
