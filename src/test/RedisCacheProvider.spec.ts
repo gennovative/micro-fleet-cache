@@ -144,7 +144,7 @@ describe('CacheProvider (single)', function () {
                     setTimeout(async () => {
                         // Assert
                         const refetch = await cache.getPrimitive(KEY, { forceRemote: false }) as Maybe<string>
-                        if (refetch) {
+                        if (refetch.isJust) {
                             console.log('Refetch:', refetch)
                         }
                         expect(refetch.isJust).to.be.false
@@ -165,7 +165,7 @@ describe('CacheProvider (single)', function () {
                     setTimeout(async () => {
                         // Assert
                         const refetch = await cache.getPrimitive(KEY, { forceRemote: true }) as Maybe<string>
-                        if (refetch) {
+                        if (refetch.isJust) {
                             console.log('Refetch:', refetch)
                         }
                         expect(refetch.isJust).to.be.false

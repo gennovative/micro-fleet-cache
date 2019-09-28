@@ -32,13 +32,13 @@ describe('registerDbAddOn', function () {
 
     it('Should not register dependencies if already registered', () => {
         // Arrange
-        depCon.bind<CacheAddOn>(T.CACHE_ADDON, CacheAddOn)
-        chai.spy.on(depCon, 'bind')
+        depCon.bindConstructor<CacheAddOn>(T.CACHE_ADDON, CacheAddOn)
+        chai.spy.on(depCon, 'bindConstructor')
 
         // Act
         registerCacheAddOn()
 
         // Assert
-        expect(depCon.bind).not.to.be.called
+        expect(depCon.bindConstructor).not.to.be.called
     })
 }) // describe

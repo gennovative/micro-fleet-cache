@@ -1,6 +1,6 @@
 {
     "name": "@micro-fleet/cache",
-    "version": "2.3.0-rc3",
+    "version": "2.3.0-rc5",
     "description": "Contains utility to manage cache.",
     "scripts": {
         "build": "npm run compile && npm run test",
@@ -34,7 +34,7 @@
         "typescript": "~3.6"
     },
     "peerDependencies": {
-        "@micro-fleet/common": "=2.3.0-rc3"
+        "@micro-fleet/common": "=2.3.0-rc5"
     },
     "publishConfig": {
         "access": "public"

@@ -9,7 +9,7 @@ function registerCacheAddOn() {
      * Don't bind CacheProvider here, as CacheAddOn.init() will do that.
      */
     if (!depCon.isBound(Types_1.Types.CACHE_ADDON)) {
-        depCon.bind(Types_1.Types.CACHE_ADDON, CacheAddOn_1.CacheAddOn).asSingleton();
+        depCon.bindConstructor(Types_1.Types.CACHE_ADDON, CacheAddOn_1.CacheAddOn).asSingleton();
     }
     const addon = depCon.resolve(Types_1.Types.CACHE_ADDON);
     return addon;

@@ -12,7 +12,7 @@ export function registerCacheAddOn(): CacheAddOn {
      */
 
     if (!depCon.isBound(T.CACHE_ADDON)) {
-        depCon.bind<CacheAddOn>(T.CACHE_ADDON, CacheAddOn).asSingleton()
+        depCon.bindConstructor<CacheAddOn>(T.CACHE_ADDON, CacheAddOn).asSingleton()
     }
     const addon = depCon.resolve<CacheAddOn>(T.CACHE_ADDON)
     return addon
