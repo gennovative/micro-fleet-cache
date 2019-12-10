@@ -47,6 +47,7 @@ export type CacheSetOptions = {
     /**
      * If true, the key is not prepended with service slug, and is accessible
      * by other CacheProvider instances from other services.
+     *
      * Default is `false`.
      */
     isGlobal?: boolean,
@@ -55,6 +56,7 @@ export type CacheSetOptions = {
 export type CacheGetOptions = {
     /**
      * Skip local cache and fetch from remote server.
+     *
      * Default is `false`.
      */
     forceRemote?: boolean,
@@ -62,7 +64,8 @@ export type CacheGetOptions = {
     /**
      * (Only takes effect when `forceRemote=true`)
      * If true, try to parse value to nearest possible primitive data type.
-     * If false, always return string. Default is `true`. Set to `false` to save some performance.
+     * If false, always return string. Set to `false` to save some performance.
+     *
      * Default is `true`.
      */
     parseType?: boolean,
@@ -70,6 +73,7 @@ export type CacheGetOptions = {
     /**
      * If true, the key is not prepended with service slug, so we can
      * get value set by other CacheProvider instances in other services.
+     *
      * Default is `false`.
      */
     isGlobal?: boolean,
