@@ -27,7 +27,7 @@
         "@types/redis": "~2.8",
         "chai": "~4.2",
         "chai-spies": "~1.0",
-        "mocha": "~6.2",
+        "mocha": "~10.2",
         "nyc": "~14.1",
         "rimraf": "~3.0",
         "tslint": "~5.20",
